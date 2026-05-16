@@ -42,6 +42,18 @@ interface ShapeSize {
   height: number
 }
 
+interface ShapeBounds extends ShapeSize {
+  minX: number
+  minY: number
+}
+
+interface ShapeLayout {
+  inner: ShapeSize
+  outer: ShapeSize
+  offsetX: number
+  offsetY: number
+}
+
 const paperSize: Map<string, PaperSize> = new Map([
   ['A3', {
     width: 7016,
@@ -163,9 +175,10 @@ const getPolygonSides = (sides: number) => {
 
 const getRegularPolygonPoints = (sides: number) => {
   const count = getPolygonSides(sides)
+  const startAngle = count === 4 ? -3 * Math.PI / 4 : -Math.PI / 2
   const points = []
   for (let i = 0; i < count; i++) {
-    const angle = -Math.PI / 2 + (2 * Math.PI * i) / count
+    const angle = startAngle + (2 * Math.PI * i) / count
     points.push({
       x: Math.cos(angle),
       y: Math.sin(angle)
@@ -174,22 +187,41 @@ const getRegularPolygonPoints = (sides: number) => {
   return points
 }
 
-const getRegularPolygonMetrics = (sides: number, sideLength: number): ShapeSize => {
-  const points = getRegularPolygonPoints(sides)
+const getBoundsFromPoints = (points: Array<{ x: number, y: number }>, sideLength: number): ShapeBounds => {
   const xs = points.map(point => point.x)
   const ys = points.map(point => point.y)
   const unitWidth = Math.max(...xs) - Math.min(...xs)
   const unitHeight = Math.max(...ys) - Math.min(...ys)
+  const unitMinX = Math.min(...xs)
+  const unitMinY = Math.min(...ys)
   const unitSide = Math.hypot(points[1].x - points[0].x, points[1].y - points[0].y)
   const scale = sideLength / unitSide
   return {
+    minX: unitMinX * scale,
+    minY: unitMinY * scale,
     width: unitWidth * scale,
     height: unitHeight * scale
   }
 }
 
+const getRegularPolygonBounds = (sides: number, sideLength: number): ShapeBounds => {
+  return getBoundsFromPoints(getRegularPolygonPoints(sides), sideLength)
+}
+
+const getRegularPolygonMetrics = (sides: number, sideLength: number): ShapeSize => {
+  const {width, height} = getRegularPolygonBounds(sides, sideLength)
+  return {
+    width,
+    height
+  }
+}
+
 const getRegularPolygonClipPath = (sides: number) => {
   const points = getRegularPolygonPoints(sides)
+  return getClipPathFromPoints(points)
+}
+
+const getClipPathFromPoints = (points: Array<{ x: number, y: number }>) => {
   const xs = points.map(point => point.x)
   const ys = points.map(point => point.y)
   const minX = Math.min(...xs)
@@ -227,6 +259,38 @@ const getShapeSize = (form: RuleForm): ShapeSize => {
   }
 }
 
+const getShapeOuterSize = (form: RuleForm): ShapeSize => {
+  return getShapeLayout(form).outer
+}
+
+const getShapeLayout = (form: RuleForm): ShapeLayout => {
+  const inner = getShapeSize(form)
+  if (form.shape === 'polygon') {
+    const sides = getPolygonSides(form.polygonSides)
+    const outerSide = form.polygonSide + 2 * form.padding * Math.tan(Math.PI / sides)
+    const innerBounds = getRegularPolygonBounds(sides, form.polygonSide)
+    const outerBounds = getRegularPolygonBounds(sides, outerSide)
+    return {
+      inner,
+      outer: {
+        width: outerBounds.width,
+        height: outerBounds.height
+      },
+      offsetX: innerBounds.minX - outerBounds.minX,
+      offsetY: innerBounds.minY - outerBounds.minY
+    }
+  }
+  return {
+    inner,
+    outer: {
+      width: inner.width + form.padding * 2,
+      height: inner.height + form.padding * 2
+    },
+    offsetX: form.padding,
+    offsetY: form.padding
+  }
+}
+
 const getShapeClass = (shape: ShapeType) => {
   return `shape-${shape}`
 }
@@ -261,14 +325,14 @@ const onSubmit = () => {
 const validateForm = () => {
   ruleFormRef.value?.validate((valid) => {
     if (valid) {
-      const {row, col, padding, width, height} = ruleForm
-      const shapeSize = getShapeSize(ruleForm)
-      const actWidth = cmTo600Dpi(col * (shapeSize.width + padding * 2))
+      const {row, col, width, height} = ruleForm
+      const shapeSize = getShapeOuterSize(ruleForm)
+      const actWidth = cmTo600Dpi(col * shapeSize.width)
       if (actWidth > width) {
         ElMessage.warning('列数过多，无法排版')
         return
       }
-      const actHeight = cmTo600Dpi(row * (shapeSize.height + padding * 2))
+      const actHeight = cmTo600Dpi(row * shapeSize.height)
       if (actHeight > height) {
         ElMessage.warning('行数过多，无法排版')
         return
@@ -292,8 +356,8 @@ const validateForm = () => {
 }
 
 const calcPaper = () => {
-  const {padding, color, width, height} = submitForm.value
-  const shapeSize = getShapeSize(submitForm.value)
+  const {color, width, height} = submitForm.value
+  const shapeLayout = getShapeLayout(submitForm.value)
 
   const previewBoxWidth = previewBox.value ? previewBox.value.offsetWidth - 40 : 0
   const previewBoxHeight = previewBox.value ? previewBox.value.offsetHeight - 40 : 0
@@ -315,13 +379,29 @@ const calcPaper = () => {
       preview.value.style.transform = `scale(${scale})`
     }
     badgeBg.value.forEach(item => {
-      item.style.width = `${cmTo600Dpi(shapeSize.width + padding * 2)}px`
-      item.style.height = `${cmTo600Dpi(shapeSize.height + padding * 2)}px`
+      item.style.width = `${cmTo600Dpi(shapeLayout.outer.width)}px`
+      item.style.height = `${cmTo600Dpi(shapeLayout.outer.height)}px`
       item.style.background = color
+      if (submitForm.value.shape === 'polygon') {
+        item.style.display = 'block'
+        item.style.position = 'relative'
+      } else {
+        item.style.display = ''
+        item.style.position = ''
+      }
     })
     badge.value.forEach(item => {
-      item.style.width = `${cmTo600Dpi(shapeSize.width)}px`
-      item.style.height = `${cmTo600Dpi(shapeSize.height)}px`
+      item.style.width = `${cmTo600Dpi(shapeLayout.inner.width)}px`
+      item.style.height = `${cmTo600Dpi(shapeLayout.inner.height)}px`
+      if (submitForm.value.shape === 'polygon') {
+        item.style.position = 'absolute'
+        item.style.left = `${cmTo600Dpi(shapeLayout.offsetX)}px`
+        item.style.top = `${cmTo600Dpi(shapeLayout.offsetY)}px`
+      } else {
+        item.style.position = ''
+        item.style.left = ''
+        item.style.top = ''
+      }
     })
     btnScale.value = 1 / scale
   })
