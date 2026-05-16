@@ -175,7 +175,7 @@ const getPolygonSides = (sides: number) => {
 
 const getRegularPolygonPoints = (sides: number) => {
   const count = getPolygonSides(sides)
-  const startAngle = count === 4 ? -3 * Math.PI / 4 : -Math.PI / 2
+  const startAngle = count === 4 ? -3 * Math.PI / 4 : count === 6 ? 0 : -Math.PI / 2
   const points = []
   for (let i = 0; i < count; i++) {
     const angle = startAngle + (2 * Math.PI * i) / count
