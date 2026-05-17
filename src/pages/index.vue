@@ -326,14 +326,16 @@ const presetTemplateOptions = computed<ShapeOption[]>(() => [
   }))
 ])
 
-const applyShapeTemplate = (template: ShapeTemplate) => {
+const applyShapeTemplate = (template: ShapeTemplate, showMessage = true) => {
   Object.assign(ruleForm, cloneRuleForm(template.form))
   shapeSelection.value = ['circle', 'rectangle', 'ellipse', 'polygon'].includes(template.form.shape)
     ? template.form.shape
     : ''
   presetSelection.value = template.id
   nextTick(validateForm)
-  ElMessage.success(`已套用模板：${template.label}`)
+  if (showMessage) {
+    ElMessage.success(`已套用模板：${template.label}`)
+  }
 }
 
 const handleShapeSelection = (value: string) => {
@@ -350,7 +352,7 @@ const handlePresetSelection = (value: string) => {
   }
 }
 
-const resetManualSettings = () => {
+const resetManualSettings = (shouldValidate = true) => {
   paper.value = 'A4'
   Object.assign(ruleForm, cloneRuleForm(defaultRuleForm))
   shapeSelection.value = defaultRuleForm.shape
@@ -359,12 +361,18 @@ const resetManualSettings = () => {
   tempImages.value = []
   copyItem.value = ''
   copyTemp.value = ''
-  nextTick(validateForm)
+  if (shouldValidate) {
+    nextTick(validateForm)
+  }
 }
 
 const resetInitialTemplateState = () => {
   usePresetTemplate.value = true
-  resetManualSettings()
+  resetManualSettings(false)
+  const firstPreset = presetTemplateOptions.value[0]
+  if (firstPreset?.template) {
+    applyShapeTemplate(firstPreset.template, false)
+  }
 }
 
 const handlePresetToggle = (checked: boolean | string | number) => {
