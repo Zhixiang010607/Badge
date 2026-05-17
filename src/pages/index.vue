@@ -44,8 +44,6 @@ interface PaperSize {
 interface ExportForm {
   fileName: string
   fileType: string
-  quality: number
-  dpi: number
 }
 
 interface ShapeSize {
@@ -158,9 +156,7 @@ const ruleForm = reactive<RuleForm>({...defaultRuleForm})
 
 const exportForm = reactive<ExportForm>({
   fileName: '吧唧图',
-  fileType: 'png',
-  quality: 1,
-  dpi: 600
+  fileType: 'png'
 })
 
 const rules = reactive<FormRules<RuleForm>>({
@@ -1124,7 +1120,7 @@ const drawShapeImage = async (
 
 const renderExportCanvas = async () => {
   const {row, col, color, width, height} = submitForm.value
-  const dpiScale = exportForm.dpi / 600
+  const dpiScale = 1
   const shapeLayout = getShapeLayout(submitForm.value)
   const outerWidth = cmTo600Dpi(shapeLayout.outer.width)
   const outerHeight = cmTo600Dpi(shapeLayout.outer.height)
@@ -1168,7 +1164,7 @@ const output = () => {
   nextTick(async () => {
     try {
       const canvas = await renderExportCanvas()
-      const img = await loadImg(canvas.toDataURL(`image/${exportForm.fileType}`, exportForm.quality))
+      const img = await loadImg(canvas.toDataURL(`image/${exportForm.fileType}`, 1))
       const a = document.createElement('a')
       a.href = img.src
       a.download = `${exportForm.fileName || '吧唧图'}.${exportForm.fileType}`
@@ -1569,17 +1565,6 @@ const operationButtonScaleStyle = computed(() => {
             <el-select v-model="exportForm.fileType">
               <el-option label="png" value="png"/>
               <el-option label="jpeg" value="jpeg"/>
-            </el-select>
-          </el-form-item>
-          <el-form-item label="质量">
-            <el-slider v-model="exportForm.quality" :min="0.1" :max="1" :step="0.1"
-                       :format-tooltip="(value: number) => value * 100 + '%'"/>
-          </el-form-item>
-          <el-form-item label="DPI">
-            <el-select v-model="exportForm.dpi">
-              <el-option label="600" :value="600"/>
-              <el-option label="400" :value="400"/>
-              <el-option label="300" :value="300"/>
             </el-select>
           </el-form-item>
         </el-form>
@@ -2164,14 +2149,6 @@ const operationButtonScaleStyle = computed(() => {
 :deep(.el-input-number__increase),
 :deep(.el-select__wrapper) {
   border-radius: 8px;
-}
-
-:deep(.el-slider__bar) {
-  background-color: #1f5e52;
-}
-
-:deep(.el-slider__button) {
-  border-color: #1f5e52;
 }
 
 </style>
