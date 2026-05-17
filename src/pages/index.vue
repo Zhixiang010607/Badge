@@ -1118,7 +1118,7 @@ const operationCellStyle = computed(() => {
 const operationButtonScaleStyle = computed(() => {
   return {
     '--operation-scale': btnScale.value,
-    '--operation-offset': `${72 * btnScale.value}px`
+    '--operation-offset': `${96 * btnScale.value}px`
   }
 })
 </script>
@@ -1156,7 +1156,7 @@ const operationButtonScaleStyle = computed(() => {
   <div v-else class="index">
     <div ref="previewBox" class="preview-box">
       <div class="preview" ref="preview">
-        <div class="column-actions">
+        <div class="column-actions" :style="operationButtonScaleStyle">
           <div
             class="column-action-cell"
             v-for="(_, j) in (images[0] || [])"
@@ -1564,8 +1564,8 @@ const operationButtonScaleStyle = computed(() => {
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 6px;
-        padding: 3px;
+        gap: 3px;
+        padding: 2px;
         border-radius: 999px;
         background: rgba(255, 255, 255, 0.96);
         border: 1px solid rgba(42, 59, 53, 0.12);
@@ -1574,9 +1574,9 @@ const operationButtonScaleStyle = computed(() => {
         transform-origin: center;
 
         :deep(.el-button) {
-          width: 18px;
-          height: 18px;
-          min-height: 18px;
+          width: 16px;
+          height: 16px;
+          min-height: 16px;
           margin: 0;
           color: #32413b;
           background: #fff;
@@ -1606,9 +1606,9 @@ const operationButtonScaleStyle = computed(() => {
           transform-origin: center left;
 
           :deep(.el-button) {
-            width: 18px;
-            height: 18px;
-            min-height: 18px;
+            width: 16px;
+            height: 16px;
+            min-height: 16px;
             margin: 0;
             color: #32413b;
             background: #fff;
