@@ -710,8 +710,8 @@ const calcPaper = () => {
   const {color, width, height} = submitForm.value
   const shapeLayout = getShapeLayout(submitForm.value)
 
-  const previewBoxWidth = previewBox.value ? previewBox.value.offsetWidth - 300 : 0
-  const previewBoxHeight = previewBox.value ? previewBox.value.offsetHeight - 300 : 0
+  const previewBoxWidth = previewBox.value ? previewBox.value.offsetWidth - 240 : 0
+  const previewBoxHeight = previewBox.value ? previewBox.value.offsetHeight - 240 : 0
 
   let scale = 1
   if (previewBoxWidth / previewBoxHeight > width / height) {
@@ -1016,6 +1016,11 @@ const pasteImage = (i: number, j: number) => {
   tempImages.value[i][j] = JSON.parse(JSON.stringify(copyTemp.value))
 }
 
+const removeImage = (i: number, j: number) => {
+  images.value[i][j] = ''
+  tempImages.value[i][j] = ''
+}
+
 const cloneValue = (value: string) => JSON.parse(JSON.stringify(value || ''))
 
 const hasCopiedImage = () => {
@@ -1096,7 +1101,7 @@ const goGitHub = () => {
 }
 
 const fakeStyle = computed(() => {
-  return `width: ${btnScale.value * 20}px; margin-right: ${btnScale.value * 5}px;`
+  return `width: ${btnScale.value * 20}px;`
 })
 
 const realStyle = computed(() => {
@@ -1236,6 +1241,12 @@ const operationButtonScaleStyle = computed(() => {
                 <div class="fake" :style="fakeStyle"></div>
                 <el-tooltip content="粘贴已复制图片" placement="top">
                   <el-button class="real" :style="realStyle" :icon="List" circle @click="pasteImage(i, j)"/>
+                </el-tooltip>
+              </div>
+              <div v-if="tempImages[i][j] && isEditableBadge(i, j)" class="inner-content">
+                <div class="fake" :style="fakeStyle"></div>
+                <el-tooltip content="删除当前图片" placement="top">
+                  <el-button class="real" :style="realStyle" :icon="Delete" circle @click="removeImage(i, j)"/>
                 </el-tooltip>
               </div>
             </div>
@@ -1658,18 +1669,17 @@ const operationButtonScaleStyle = computed(() => {
             top: 50%;
             left: 50%;
             z-index: 25;
-            display: flex;
+            display: grid;
+            grid-template-columns: repeat(2, max-content);
+            grid-auto-rows: max-content;
             align-items: center;
             justify-content: center;
+            gap: 4px;
             transform: translate(-50%, -50%);
             pointer-events: auto;
 
             .inner-content {
               position: relative;
-
-              &:last-child {
-                margin-right: 0 !important;
-              }
 
               .fake {
                 visibility: hidden;
