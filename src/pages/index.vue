@@ -7,6 +7,18 @@ import {computed} from 'vue'
 
 type ShapeType = 'circle' | 'rectangle' | 'ellipse' | 'polygon' | 'redHeart' | 'yellowHeart'
 
+interface ShapeOption {
+  label: string
+  value: string
+  template?: ShapeTemplate
+}
+
+interface ShapeTemplate {
+  id: string
+  label: string
+  form: RuleForm
+}
+
 interface RuleForm {
   shape: ShapeType
   row: number
@@ -69,6 +81,7 @@ interface EmployeeAccount {
 
 const AUTH_SESSION_KEY = 'badge-print-session-v1'
 const AUTH_REMEMBER_KEY = 'badge-print-remember-login-v1'
+const SHAPE_TEMPLATE_KEY = 'badge-print-shape-templates-v1'
 const ADMIN_USERNAME = 'yanyujie123'
 const windowWithAuthConfig = window as Window & {
   BADGE_AUTH_API_URL?: string
@@ -221,6 +234,117 @@ const employeeForm = reactive({
   password: ''
 })
 const employeeAccounts = ref<EmployeeAccount[]>([])
+const shapeTemplates = ref<ShapeTemplate[]>([])
+const shapeSelection = ref<string>(ruleForm.shape)
+
+const cloneRuleForm = (form: RuleForm): RuleForm => JSON.parse(JSON.stringify(form))
+
+const formatTemplateNumber = (value: number) => {
+  return Number(value.toFixed(2)).toString()
+}
+
+const buildTemplateLabel = (form: RuleForm) => {
+  switch (form.shape) {
+    case 'circle':
+      return `圆 ${formatTemplateNumber(form.diam)}cm`
+    case 'polygon':
+      return `正${form.polygonSides}边形 ${formatTemplateNumber(form.polygonSide)}cm`
+    case 'rectangle':
+      return `矩形 ${formatTemplateNumber(form.rectHeight)}X${formatTemplateNumber(form.rectWidth)}cm`
+    case 'ellipse':
+      return `椭圆 ${formatTemplateNumber(form.ellipseLong)}X${formatTemplateNumber(form.ellipseShort)}cm`
+    case 'redHeart':
+      return '红色心形'
+    case 'yellowHeart':
+      return '黄色心形'
+    default:
+      return '自定义模板'
+  }
+}
+
+const loadShapeTemplates = () => {
+  try {
+    const saved = JSON.parse(window.localStorage.getItem(SHAPE_TEMPLATE_KEY) || '[]')
+    if (!Array.isArray(saved)) {
+      return
+    }
+    shapeTemplates.value = saved
+      .filter((item) => item?.id && item?.label && item?.form?.shape)
+      .map((item) => ({
+        id: String(item.id),
+        label: String(item.label),
+        form: cloneRuleForm(item.form)
+      }))
+  } catch {
+    shapeTemplates.value = []
+  }
+}
+
+const writeShapeTemplates = () => {
+  window.localStorage.setItem(SHAPE_TEMPLATE_KEY, JSON.stringify(shapeTemplates.value))
+}
+
+const shapeSelectOptions = computed<ShapeOption[]>(() => [
+  ...shapeOptions,
+  ...shapeTemplates.value.map((template) => ({
+    label: template.label,
+    value: template.id,
+    template
+  }))
+])
+
+const applyHeartDefaults = (shape: ShapeType) => {
+  if (shape === 'yellowHeart') {
+    ruleForm.row = 9
+    ruleForm.col = 5
+    ruleForm.padding = 0.1
+  }
+  if (shape === 'redHeart') {
+    ruleForm.row = 4
+    ruleForm.col = 3
+    ruleForm.padding = 0.42
+  }
+}
+
+const applyShapeTemplate = (template: ShapeTemplate) => {
+  Object.assign(ruleForm, cloneRuleForm(template.form))
+  shapeSelection.value = template.id
+  ElMessage.success(`已套用模板：${template.label}`)
+}
+
+const handleShapeSelection = (value: string) => {
+  const template = shapeTemplates.value.find((item) => item.id === value)
+  if (template) {
+    applyShapeTemplate(template)
+    return
+  }
+  ruleForm.shape = value as ShapeType
+  shapeSelection.value = value
+  applyHeartDefaults(ruleForm.shape)
+}
+
+const saveCurrentShapeTemplate = () => {
+  if (currentUser.value?.role !== 'admin') {
+    ElMessage.warning('只有管理员可以保存模板')
+    return
+  }
+  const form = cloneRuleForm(ruleForm)
+  const label = buildTemplateLabel(form)
+  const existingIndex = shapeTemplates.value.findIndex((item) => item.label === label)
+  const template: ShapeTemplate = {
+    id: existingIndex >= 0 ? shapeTemplates.value[existingIndex].id : `template-${Date.now()}`,
+    label,
+    form
+  }
+  if (existingIndex >= 0) {
+    shapeTemplates.value.splice(existingIndex, 1, template)
+  } else {
+    shapeTemplates.value.push(template)
+  }
+  writeShapeTemplates()
+  shapeSelection.value = template.id
+  ElMessage.success(`已保存模板：${label}`)
+}
 
 const readRememberedLogin = () => {
   try {
@@ -758,6 +882,7 @@ const calcPaper = () => {
 
 onMounted(async () => {
   readRememberedLogin()
+  loadShapeTemplates()
   currentUser.value = await readSessionUser()
   authReady.value = true
   calcPaper()
@@ -1323,9 +1448,12 @@ const operationButtonScaleStyle = computed(() => {
             <el-input-number v-model="ruleForm.height" controls-position="right" :min="0.01"/>
           </el-form-item>
           <el-form-item label="形状" prop="shape">
-            <el-select v-model="ruleForm.shape">
-              <el-option v-for="item in shapeOptions" :key="item.value" :label="item.label" :value="item.value"/>
-            </el-select>
+            <div class="shape-template-row">
+              <el-select v-model="shapeSelection" @change="handleShapeSelection">
+                <el-option v-for="item in shapeSelectOptions" :key="item.value" :label="item.label" :value="item.value"/>
+              </el-select>
+              <el-button v-if="currentUser.role === 'admin'" @click="saveCurrentShapeTemplate">保存当前模板</el-button>
+            </div>
           </el-form-item>
           <el-form-item label="行数" prop="row">
             <el-input-number v-model="ruleForm.row" controls-position="right" :min="1"/>
@@ -1885,6 +2013,14 @@ const operationButtonScaleStyle = computed(() => {
       border-top: 1px solid #dfe3de;
       margin-top: 24px;
       padding-top: 22px;
+    }
+
+    .shape-template-row {
+      width: 100%;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
     }
 
     .btn-box {
