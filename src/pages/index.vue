@@ -1569,8 +1569,8 @@ const operationButtonScaleStyle = computed(() => {
 
       .corner-actions {
         position: absolute;
-        top: calc(var(--operation-offset) * -1 + 24px);
-        left: calc(var(--operation-offset) * -1 - 18px);
+        top: calc(var(--column-operation-offset) * -1);
+        left: calc(var(--operation-offset) * -1);
         z-index: 30;
         pointer-events: auto;
         transform: scale(var(--operation-scale));
