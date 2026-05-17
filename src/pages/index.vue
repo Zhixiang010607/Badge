@@ -348,10 +348,20 @@ const handlePresetSelection = (value: string) => {
 }
 
 const resetManualSettings = () => {
+  paper.value = 'A4'
   Object.assign(ruleForm, cloneRuleForm(defaultRuleForm))
   shapeSelection.value = defaultRuleForm.shape
   presetSelection.value = ''
+  images.value = []
+  tempImages.value = []
+  copyItem.value = ''
+  copyTemp.value = ''
   nextTick(validateForm)
+}
+
+const resetInitialTemplateState = () => {
+  usePresetTemplate.value = true
+  resetManualSettings()
 }
 
 const handlePresetToggle = (checked: boolean | string | number) => {
@@ -533,11 +543,11 @@ const login = async () => {
     writeSessionUser(user)
     saveRememberedLogin()
     await loadShapeTemplates()
+    resetInitialTemplateState()
     loginMessage.value = ''
     if (!loginForm.remember) {
       loginForm.password = ''
     }
-    nextTick(calcPaper)
   } catch (error: any) {
     loginMessage.value = error?.message || '账号或密码不正确'
   } finally {
@@ -937,6 +947,9 @@ onMounted(async () => {
   readRememberedLogin()
   currentUser.value = await readSessionUser()
   await loadShapeTemplates()
+  if (currentUser.value) {
+    resetInitialTemplateState()
+  }
   authReady.value = true
   calcPaper()
   window.addEventListener('resize', calcPaper)
