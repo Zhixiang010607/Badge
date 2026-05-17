@@ -1225,6 +1225,12 @@ const operationButtonScaleStyle = computed(() => {
                              @click="addImage(i, j)"/>
                 </el-tooltip>
               </div>
+              <div v-if="!image && isEditableBadge(i, j)" class="inner-content">
+                <div class="fake" :style="fakeStyle"></div>
+                <el-tooltip :content="copyItem ? '粘贴已复制图片' : '请先复制图片'" placement="top">
+                  <el-button class="real" :style="realStyle" :icon="List" circle :disabled="!copyItem" @click="pasteImage(i, j)"/>
+                </el-tooltip>
+              </div>
               <div v-if="image && isEditableBadge(i, j)" class="inner-content">
                 <div class="fake" :style="fakeStyle"></div>
                 <el-tooltip content="裁剪图片" placement="top">
@@ -1235,12 +1241,6 @@ const operationButtonScaleStyle = computed(() => {
                 <div class="fake" :style="fakeStyle"></div>
                 <el-tooltip content="复制这张图片" placement="top">
                   <el-button class="real" :style="realStyle" :icon="CopyDocument" circle @click="copyImage(i, j)"/>
-                </el-tooltip>
-              </div>
-              <div v-if="isEditableBadge(i, j)" class="inner-content">
-                <div class="fake" :style="fakeStyle"></div>
-                <el-tooltip :content="copyItem ? '粘贴已复制图片' : '请先复制图片'" placement="top">
-                  <el-button class="real" :style="realStyle" :icon="List" circle :disabled="!copyItem" @click="pasteImage(i, j)"/>
                 </el-tooltip>
               </div>
               <div v-if="image && isEditableBadge(i, j)" class="inner-content">
