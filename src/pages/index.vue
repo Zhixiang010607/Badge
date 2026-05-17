@@ -1683,7 +1683,12 @@ const operationButtonScaleStyle = computed(() => {
             transform-origin: center;
 
             &.is-single {
-              grid-template-columns: 20px;
+              display: flex;
+              width: 20px;
+              height: 20px;
+              align-items: center;
+              justify-content: center;
+              gap: 0;
             }
 
             :deep(.el-tooltip__trigger) {
