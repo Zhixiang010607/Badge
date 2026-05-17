@@ -1220,7 +1220,7 @@ const operationButtonScaleStyle = computed(() => {
               :class="getShapeClass(submitForm.shape)"
               :style="getShapeStyle(submitForm)"
             >
-              <img v-if="image" class="image" :src="image" alt="" @click="addImage(i, j)"/>
+              <img v-if="image" class="image" :src="image" alt=""/>
             </div>
             <div
               class="badge-actions"
