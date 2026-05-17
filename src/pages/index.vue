@@ -1218,12 +1218,15 @@ const operationButtonScaleStyle = computed(() => {
             </div>
             <div
               class="badge-actions"
-              :class="{'is-open': isEditableBadge(i, j), 'is-single': !image || !isEditableBadge(i, j)}"
+              :class="{'is-open': isEditableBadge(i, j), 'is-single': image && !isEditableBadge(i, j)}"
               :style="badgeActionStyle"
             >
               <template v-if="!image">
                 <el-tooltip content="添加图片" placement="top">
                   <el-button :icon="Plus" circle @click="addImage(i, j)"/>
+                </el-tooltip>
+                <el-tooltip content="粘贴已复制图片" placement="top">
+                  <el-button :icon="List" circle @click="pasteImage(i, j)"/>
                 </el-tooltip>
               </template>
               <template v-else-if="isEditableBadge(i, j)">
