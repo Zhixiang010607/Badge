@@ -2,7 +2,7 @@
 import type {FormInstance, FormRules} from 'element-plus'
 import {Cropper, CropperResult} from 'vue-advanced-cropper'
 import 'vue-advanced-cropper/dist/style.css'
-import {CopyDocument, Crop, Delete, Edit, List, Plus} from '@element-plus/icons-vue'
+import {CopyDocument, Crop, Delete, List, Plus} from '@element-plus/icons-vue'
 import {computed} from 'vue'
 
 type ShapeType = 'circle' | 'rectangle' | 'ellipse' | 'polygon' | 'redHeart' | 'yellowHeart'
@@ -1024,6 +1024,16 @@ const hasCopiedImage = () => {
   return Boolean(copyItem.value)
 }
 
+const pasteImage = (i: number, j: number) => {
+  if (!hasCopiedImage()) {
+    ElMessage.warning('请先复制一张图片')
+    return
+  }
+  images.value[i][j] = cloneValue(copyItem.value)
+  tempImages.value[i][j] = cloneValue(copyTemp.value)
+  ElMessage.success('已粘贴到当前位置')
+}
+
 const fillRowFromCopiedImage = (rowIndex: number) => {
   if (!hasCopiedImage()) {
     ElMessage.warning('请先复制一张图片')
@@ -1223,8 +1233,8 @@ const operationButtonScaleStyle = computed(() => {
                 </el-tooltip>
               </template>
               <template v-else-if="isEditableBadge(i, j)">
-                <el-tooltip content="更换图片" placement="top">
-                  <el-button :icon="Edit" circle @click="addImage(i, j)"/>
+                <el-tooltip content="粘贴已复制图片" placement="top">
+                  <el-button :icon="List" circle @click="pasteImage(i, j)"/>
                 </el-tooltip>
                 <el-tooltip content="裁剪图片" placement="top">
                   <el-button :icon="Crop" circle @click="editImage(i, j)"/>
