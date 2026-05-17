@@ -1100,12 +1100,10 @@ const goGitHub = () => {
   window.open('https://github.com/HaoHaoP/badge-print')
 }
 
-const fakeStyle = computed(() => {
-  return `width: ${btnScale.value * 20}px; height: ${btnScale.value * 20}px;`
-})
-
-const realStyle = computed(() => {
-  return `transform: translate(-50%, -50%) scale(${btnScale.value})`
+const badgeActionStyle = computed(() => {
+  return {
+    '--badge-action-scale': btnScale.value
+  }
 })
 
 const isEditableBadge = (i: number, j: number) => {
@@ -1217,50 +1215,34 @@ const operationButtonScaleStyle = computed(() => {
             >
               <img v-if="image" class="image" :src="image" alt="" @click="addImage(i, j)"/>
             </div>
-            <div class="badge-actions" :class="{'is-open': isEditableBadge(i, j)}">
-              <div v-if="!image" class="inner-content">
-                <div class="fake" :style="fakeStyle"></div>
+            <div class="badge-actions" :class="{'is-open': isEditableBadge(i, j)}" :style="badgeActionStyle">
+              <template v-if="!image">
                 <el-tooltip content="添加图片" placement="top">
-                  <el-button class="real" :style="realStyle" :icon="Plus" circle
-                             @click="addImage(i, j)"/>
+                  <el-button :icon="Plus" circle @click="addImage(i, j)"/>
                 </el-tooltip>
-              </div>
-              <div v-if="image && !isEditableBadge(i, j)" class="inner-content">
-                <div class="fake" :style="fakeStyle"></div>
-                <el-tooltip content="复制这张图片" placement="top">
-                  <el-button class="real" :style="realStyle" :icon="CopyDocument" circle @click="copyImage(i, j)"/>
-                </el-tooltip>
-              </div>
-              <div v-if="!image" class="inner-content">
-                <div class="fake" :style="fakeStyle"></div>
                 <el-tooltip :content="copyItem ? '粘贴已复制图片' : '请先复制图片'" placement="top">
-                  <el-button class="real" :style="realStyle" :icon="List" circle :disabled="!copyItem" @click="pasteImage(i, j)"/>
+                  <el-button :icon="List" circle :disabled="!copyItem" @click="pasteImage(i, j)"/>
                 </el-tooltip>
-              </div>
-              <div v-if="image && isEditableBadge(i, j)" class="inner-content">
-                <div class="fake" :style="fakeStyle"></div>
+              </template>
+              <template v-else-if="isEditableBadge(i, j)">
                 <el-tooltip content="更换图片" placement="top">
-                  <el-button class="real" :style="realStyle" :icon="Edit" circle @click="addImage(i, j)"/>
+                  <el-button :icon="Edit" circle @click="addImage(i, j)"/>
                 </el-tooltip>
-              </div>
-              <div v-if="image && isEditableBadge(i, j)" class="inner-content">
-                <div class="fake" :style="fakeStyle"></div>
                 <el-tooltip content="裁剪图片" placement="top">
-                  <el-button class="real" :style="realStyle" :icon="Crop" circle @click="editImage(i, j)"/>
+                  <el-button :icon="Crop" circle @click="editImage(i, j)"/>
                 </el-tooltip>
-              </div>
-              <div v-if="image && isEditableBadge(i, j)" class="inner-content">
-                <div class="fake" :style="fakeStyle"></div>
                 <el-tooltip content="复制这张图片" placement="top">
-                  <el-button class="real" :style="realStyle" :icon="CopyDocument" circle @click="copyImage(i, j)"/>
+                  <el-button :icon="CopyDocument" circle @click="copyImage(i, j)"/>
                 </el-tooltip>
-              </div>
-              <div v-if="image && isEditableBadge(i, j)" class="inner-content">
-                <div class="fake" :style="fakeStyle"></div>
                 <el-tooltip content="删除当前图片" placement="top">
-                  <el-button class="real" :style="realStyle" :icon="Delete" circle @click="removeImage(i, j)"/>
+                  <el-button :icon="Delete" circle @click="removeImage(i, j)"/>
                 </el-tooltip>
-              </div>
+              </template>
+              <template v-else>
+                <el-tooltip content="复制这张图片" placement="top">
+                  <el-button :icon="CopyDocument" circle @click="copyImage(i, j)"/>
+                </el-tooltip>
+              </template>
             </div>
           </div>
         </div>
@@ -1687,35 +1669,19 @@ const operationButtonScaleStyle = computed(() => {
             align-items: center;
             justify-content: center;
             gap: 4px;
-            transform: translate(-50%, -50%);
+            transform: translate(-50%, -50%) scale(var(--badge-action-scale));
             pointer-events: auto;
-
-            .inner-content {
-              position: relative;
-
-              .fake {
-                visibility: hidden;
-              }
-
-              .real {
-                position: absolute;
-                top: 50%;
-                left: 50%;
-                width: 20px;
-                height: 20px;
-                min-height: 20px;
-                color: #606b66;
-                background: rgba(255, 255, 255, 0.96);
-                border-color: rgba(70, 82, 77, 0.14);
-                box-shadow: 0 4px 12px rgba(28, 39, 35, 0.14);
-              }
-            }
+            transform-origin: center;
 
             :deep(.el-button) {
               width: 20px;
               height: 20px;
               min-height: 20px;
               margin: 0;
+              color: #606b66;
+              background: rgba(255, 255, 255, 0.96);
+              border-color: rgba(70, 82, 77, 0.14);
+              box-shadow: 0 4px 12px rgba(28, 39, 35, 0.14);
             }
           }
         }
