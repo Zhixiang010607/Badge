@@ -1126,7 +1126,7 @@ const operationButtonScaleStyle = computed(() => {
   return {
     '--operation-scale': btnScale.value,
     '--operation-offset': `${96 * btnScale.value}px`,
-    '--column-operation-offset': `${24 * btnScale.value}px`
+    '--column-operation-offset': `${38 * btnScale.value}px`
   }
 })
 </script>
@@ -1675,29 +1675,14 @@ const operationButtonScaleStyle = computed(() => {
             left: 50%;
             z-index: 25;
             display: grid;
-            grid-template-columns: repeat(2, 20px);
-            grid-auto-rows: 20px;
+            grid-template-columns: repeat(2, max-content);
+            grid-auto-rows: max-content;
             align-items: center;
             justify-content: center;
-            justify-items: center;
             gap: 4px;
             transform: translate(-50%, -50%) scale(var(--badge-action-scale));
             pointer-events: auto;
             transform-origin: center;
-
-            > * {
-              width: 20px;
-              height: 20px;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-            }
-
-            :deep(.el-tooltip__trigger) {
-              display: flex;
-              align-items: center;
-              justify-content: center;
-            }
 
             :deep(.el-button) {
               width: 20px;
