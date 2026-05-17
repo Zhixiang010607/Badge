@@ -1224,7 +1224,7 @@ const operationButtonScaleStyle = computed(() => {
             </div>
             <div
               class="badge-actions"
-              :class="{'is-open': isEditableBadge(i, j)}"
+              :class="{'is-open': isEditableBadge(i, j), 'is-single': !image || !isEditableBadge(i, j)}"
               :style="badgeActionStyle"
             >
               <template v-if="!image">
@@ -1681,6 +1681,10 @@ const operationButtonScaleStyle = computed(() => {
             transform: translate(-50%, -50%) scale(var(--badge-action-scale));
             pointer-events: auto;
             transform-origin: center;
+
+            &.is-single {
+              grid-template-columns: 20px;
+            }
 
             :deep(.el-tooltip__trigger) {
               width: 20px;
