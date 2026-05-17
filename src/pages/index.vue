@@ -332,7 +332,7 @@ const applyShapeTemplate = (template: ShapeTemplate, showMessage = true) => {
     ? template.form.shape
     : ''
   presetSelection.value = template.id
-  nextTick(validateForm)
+  commitRuleFormToPreview(false)
   if (showMessage) {
     ElMessage.success(`已套用模板：${template.label}`)
   }
@@ -903,6 +903,14 @@ const buildImageGrid = (row: number, col: number, source: Array<Array<string>>) 
   return arr
 }
 
+const commitRuleFormToPreview = (preserveImages = true) => {
+  const {row, col} = ruleForm
+  images.value = buildImageGrid(row, col, preserveImages ? images.value : [])
+  tempImages.value = buildImageGrid(row, col, preserveImages ? tempImages.value : [])
+  submitForm.value = {...ruleForm}
+  nextTick(calcPaper)
+}
+
 const validateForm = () => {
   ruleFormRef.value?.validate((valid) => {
     if (valid) {
@@ -923,11 +931,7 @@ const validateForm = () => {
         submitForm.value.shape === ruleForm.shape &&
         submitForm.value.row === row &&
         submitForm.value.col === col
-      images.value = buildImageGrid(row, col, shouldPreserveImages ? images.value : [])
-      tempImages.value = buildImageGrid(row, col, shouldPreserveImages ? tempImages.value : [])
-
-      submitForm.value = {...ruleForm}
-      calcPaper()
+      commitRuleFormToPreview(shouldPreserveImages)
     }
   })
 }
@@ -992,11 +996,13 @@ onMounted(async () => {
   readRememberedLogin()
   currentUser.value = await readSessionUser()
   await loadShapeTemplates()
+  authReady.value = true
+  await nextTick()
   if (currentUser.value) {
     resetInitialTemplateState()
+  } else {
+    calcPaper()
   }
-  authReady.value = true
-  calcPaper()
   window.addEventListener('resize', calcPaper)
 })
 onUnmounted(() => {
