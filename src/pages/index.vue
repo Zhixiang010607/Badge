@@ -6,7 +6,7 @@ import {CopyDocument, Crop, Edit, List, Plus} from '@element-plus/icons-vue'
 import html2canvas from 'html2canvas'
 import {computed} from 'vue'
 
-type ShapeType = 'circle' | 'rectangle' | 'ellipse' | 'polygon'
+type ShapeType = 'circle' | 'rectangle' | 'ellipse' | 'polygon' | 'redHeart' | 'yellowHeart'
 
 interface RuleForm {
   shape: ShapeType
@@ -54,6 +54,28 @@ interface ShapeLayout {
   offsetY: number
 }
 
+interface AuthUser {
+  id?: string
+  username: string
+  password?: string
+  role: 'admin' | 'employee'
+}
+
+interface EmployeeAccount {
+  id: string
+  username: string
+  password: string
+  createdAt: string
+}
+
+const AUTH_STORAGE_KEY = 'badge-print-employees-v1'
+const AUTH_SESSION_KEY = 'badge-print-session-v1'
+const ADMIN_ACCOUNT: AuthUser = {
+  username: 'yanyujie123',
+  password: '123456789',
+  role: 'admin'
+}
+
 const paperSize: Map<string, PaperSize> = new Map([
   ['A3', {
     width: 7016,
@@ -78,7 +100,20 @@ const shapeOptions: Array<{ label: string, value: ShapeType }> = [
   {label: '矩形', value: 'rectangle'},
   {label: '椭圆', value: 'ellipse'},
   {label: '正多边形', value: 'polygon'},
+  {label: '红色心形', value: 'redHeart'},
+  {label: '黄色心形', value: 'yellowHeart'},
 ]
+
+const fixedShapeSize: Record<'redHeart' | 'yellowHeart', ShapeSize> = {
+  redHeart: {
+    width: 6,
+    height: 5.46
+  },
+  yellowHeart: {
+    width: 2.5,
+    height: 2.13
+  }
+}
 
 const paper = ref<string>('A4')
 
@@ -164,6 +199,212 @@ const badge = ref<HTMLElement[]>([])
 const btnScale = ref(1)
 
 const submitForm = ref<RuleForm>({...ruleForm})
+const currentUser = ref<AuthUser | null>(null)
+const loginForm = reactive({
+  username: '',
+  password: ''
+})
+const loginMessage = ref('')
+const adminVisible = ref(false)
+const employeeMessage = ref('')
+const employeeForm = reactive({
+  username: '',
+  password: ''
+})
+const employeeAccounts = ref<EmployeeAccount[]>([])
+
+const createId = (prefix: string) => {
+  return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
+}
+
+const readEmployeeAccounts = (): EmployeeAccount[] => {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(AUTH_STORAGE_KEY) || '[]')
+    if (!Array.isArray(parsed)) {
+      return []
+    }
+    return parsed
+      .filter((account) => account && typeof account.username === 'string' && typeof account.password === 'string')
+      .map((account) => ({
+        id: account.id || createId('employee'),
+        username: account.username.trim(),
+        password: account.password,
+        createdAt: account.createdAt || new Date().toISOString()
+      }))
+      .filter((account) => account.username)
+  } catch {
+    return []
+  }
+}
+
+const saveEmployeeAccounts = (accounts: EmployeeAccount[]) => {
+  window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(accounts))
+  employeeAccounts.value = accounts
+}
+
+const readSessionUser = (): AuthUser | null => {
+  try {
+    const session = JSON.parse(window.sessionStorage.getItem(AUTH_SESSION_KEY) || 'null')
+    if (!session) {
+      return null
+    }
+    if (session.role === 'admin' && session.username === ADMIN_ACCOUNT.username) {
+      return {
+        role: 'admin',
+        username: ADMIN_ACCOUNT.username
+      }
+    }
+    if (session.role === 'employee') {
+      const account = readEmployeeAccounts().find((item) => item.id === session.id && item.password === session.password)
+      if (account) {
+        return {
+          role: 'employee',
+          id: account.id,
+          username: account.username,
+          password: account.password
+        }
+      }
+    }
+  } catch {
+    window.sessionStorage.removeItem(AUTH_SESSION_KEY)
+  }
+  window.sessionStorage.removeItem(AUTH_SESSION_KEY)
+  return null
+}
+
+const writeSessionUser = (user: AuthUser) => {
+  const payload = user.role === 'admin'
+    ? {
+        role: 'admin',
+        username: user.username
+      }
+    : {
+        role: 'employee',
+        id: user.id,
+        username: user.username,
+        password: user.password
+      }
+  window.sessionStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(payload))
+}
+
+const authenticate = (username: string, password: string): AuthUser | null => {
+  if (username === ADMIN_ACCOUNT.username && password === ADMIN_ACCOUNT.password) {
+    return {
+      role: 'admin',
+      username: ADMIN_ACCOUNT.username
+    }
+  }
+  const employee = readEmployeeAccounts().find((account) => account.username === username && account.password === password)
+  if (!employee) {
+    return null
+  }
+  return {
+    role: 'employee',
+    id: employee.id,
+    username: employee.username,
+    password: employee.password
+  }
+}
+
+const login = () => {
+  const user = authenticate(loginForm.username.trim(), loginForm.password)
+  if (!user) {
+    loginMessage.value = '账号或密码不正确'
+    return
+  }
+  currentUser.value = user
+  writeSessionUser(user)
+  loginMessage.value = ''
+  loginForm.password = ''
+  nextTick(calcPaper)
+}
+
+const logout = () => {
+  window.sessionStorage.removeItem(AUTH_SESSION_KEY)
+  currentUser.value = null
+  adminVisible.value = false
+  loginMessage.value = '已退出登录'
+}
+
+const refreshEmployeeAccounts = () => {
+  employeeAccounts.value = readEmployeeAccounts()
+}
+
+const setEmployeeMessage = (message: string) => {
+  employeeMessage.value = message
+}
+
+const createSuggestedUsername = () => {
+  return `staff${Math.floor(1000 + Math.random() * 9000)}`
+}
+
+const createSuggestedPassword = () => {
+  return Math.random().toString(36).slice(2, 10)
+}
+
+const generateEmployeeCredentials = () => {
+  employeeForm.username = createSuggestedUsername()
+  employeeForm.password = createSuggestedPassword()
+  setEmployeeMessage('已随机生成账号和密码')
+}
+
+const createEmployeeAccount = () => {
+  const username = employeeForm.username.trim()
+  const password = employeeForm.password
+  if (!username || !password) {
+    setEmployeeMessage('请输入员工账号和密码')
+    return
+  }
+  const accounts = readEmployeeAccounts()
+  if (username === ADMIN_ACCOUNT.username || accounts.some((account) => account.username === username)) {
+    setEmployeeMessage('账号已存在')
+    return
+  }
+  accounts.push({
+    id: createId('employee'),
+    username,
+    password,
+    createdAt: new Date().toISOString()
+  })
+  saveEmployeeAccounts(accounts)
+  employeeForm.username = ''
+  employeeForm.password = ''
+  setEmployeeMessage('员工账号已新增')
+}
+
+const updateEmployeeAccount = (id: string, key: 'username' | 'password', value: string) => {
+  const accounts = readEmployeeAccounts()
+  const target = accounts.find((account) => account.id === id)
+  if (!target) {
+    return
+  }
+  if (key === 'username') {
+    const username = value.trim()
+    if (!username) {
+      setEmployeeMessage('员工账号不能为空')
+      return
+    }
+    if (username === ADMIN_ACCOUNT.username || accounts.some((account) => account.id !== id && account.username === username)) {
+      setEmployeeMessage('账号已存在')
+      return
+    }
+    target.username = username
+  } else {
+    if (!value) {
+      setEmployeeMessage('员工密码不能为空')
+      return
+    }
+    target.password = value
+  }
+  saveEmployeeAccounts(accounts)
+  setEmployeeMessage('员工账号已更新')
+}
+
+const removeEmployeeAccount = (id: string) => {
+  const accounts = readEmployeeAccounts().filter((account) => account.id !== id)
+  saveEmployeeAccounts(accounts)
+  setEmployeeMessage('员工账号已删除')
+}
 
 const cmTo600Dpi = (cm: number) => {
   return cm / 2.54 * 600
@@ -250,6 +491,9 @@ const getShapeSize = (form: RuleForm): ShapeSize => {
       }
     case 'polygon':
       return getRegularPolygonMetrics(form.polygonSides, form.polygonSide)
+    case 'redHeart':
+    case 'yellowHeart':
+      return fixedShapeSize[form.shape]
     case 'circle':
     default:
       return {
@@ -299,6 +543,19 @@ const getShapeStyle = (form: RuleForm) => {
   if (form.shape === 'polygon') {
     return {
       clipPath: getRegularPolygonClipPath(form.polygonSides)
+    }
+  }
+  if (form.shape === 'redHeart' || form.shape === 'yellowHeart') {
+    const maskUrl = form.shape === 'redHeart' ? '/red-heart-mask.png' : '/yellow-heart-mask.png'
+    return {
+      maskImage: `url("${maskUrl}")`,
+      maskRepeat: 'no-repeat',
+      maskSize: '100% 100%',
+      maskPosition: 'center',
+      WebkitMaskImage: `url("${maskUrl}")`,
+      WebkitMaskRepeat: 'no-repeat',
+      WebkitMaskSize: '100% 100%',
+      WebkitMaskPosition: 'center'
     }
   }
   return {}
@@ -408,6 +665,8 @@ const calcPaper = () => {
 }
 
 onMounted(() => {
+  employeeAccounts.value = readEmployeeAccounts()
+  currentUser.value = readSessionUser()
   calcPaper()
   window.addEventListener('resize', calcPaper)
 })
@@ -526,7 +785,26 @@ const realStyle = computed(() => {
 </script>
 
 <template>
-  <div class="index">
+  <main v-if="!currentUser" class="auth-shell">
+    <section class="auth-card">
+      <p class="eyebrow">Account Login</p>
+      <h1>吧唧打印图排版工具</h1>
+      <p class="subcopy">请先登录账号，登录后才能使用打印图排版和导出工具。</p>
+      <el-form class="auth-form" @submit.prevent="login">
+        <label>
+          账号
+          <el-input v-model="loginForm.username" autocomplete="username"/>
+        </label>
+        <label>
+          密码
+          <el-input v-model="loginForm.password" type="password" autocomplete="current-password" show-password/>
+        </label>
+        <el-button class="auth-submit" type="primary" native-type="submit">登录使用</el-button>
+        <p class="auth-message">{{ loginMessage }}</p>
+      </el-form>
+    </section>
+  </main>
+  <div v-else class="index">
     <div ref="previewBox" class="preview-box">
       <div class="preview" ref="preview">
         <div class="row" v-for="(row, i) of images" :key="i">
@@ -574,6 +852,54 @@ const realStyle = computed(() => {
     </div>
     <div class="content">
       <h1 class="title">吧唧打印图排版工具</h1>
+      <div class="account-bar">
+        <div>
+          <span>当前账号</span>
+          <strong>{{ currentUser.username }}</strong>
+        </div>
+        <div class="account-actions">
+          <el-button v-if="currentUser.role === 'admin'" size="small" @click="adminVisible = !adminVisible; refreshEmployeeAccounts()">
+            员工账号管理
+          </el-button>
+          <el-button size="small" @click="logout">退出登录</el-button>
+        </div>
+      </div>
+      <div v-if="currentUser.role === 'admin' && adminVisible" class="admin-panel">
+        <div class="admin-panel__head">
+          <div>
+            <p class="eyebrow">Admin</p>
+            <h2>员工账号管理</h2>
+          </div>
+          <p class="admin-message">{{ employeeMessage }}</p>
+        </div>
+        <div class="employee-form">
+          <label>
+            员工账号
+            <el-input v-model="employeeForm.username" placeholder="输入员工账号"/>
+          </label>
+          <label>
+            员工密码
+            <el-input v-model="employeeForm.password" placeholder="输入员工密码"/>
+          </label>
+          <el-button @click="generateEmployeeCredentials">随机生成</el-button>
+          <el-button type="primary" @click="createEmployeeAccount">新增员工</el-button>
+        </div>
+        <div class="employee-list">
+          <p v-if="!employeeAccounts.length" class="muted">暂无员工账号</p>
+          <div v-for="(account, index) in employeeAccounts" :key="account.id" class="employee-row">
+            <span class="employee-index">{{ index + 1 }}</span>
+            <label>
+              账号
+              <el-input :model-value="account.username" @change="(value: string) => updateEmployeeAccount(account.id, 'username', value)"/>
+            </label>
+            <label>
+              密码
+              <el-input :model-value="account.password" @change="(value: string) => updateEmployeeAccount(account.id, 'password', value)"/>
+            </label>
+            <el-button type="danger" plain @click="removeEmployeeAccount(account.id)">删除</el-button>
+          </div>
+        </div>
+      </div>
       <div class="content-box">
         <el-form class="form" ref="ruleFormRef" :model="ruleForm" :rules="rules" label-position="left"
                  label-width="120px">
@@ -663,7 +989,6 @@ const realStyle = computed(() => {
         <p>Tips：当导出打印图时，未选图片的形状底框会被隐藏。</p>
       </div>
       <div class="footer">
-        <p class="copyright">Copyright (c) 2023 皓皓P</p>
         <img class="github-icon" src="../assets/github-mark.svg" @click="goGitHub" alt="GitHub"/>
       </div>
     </div>
@@ -681,10 +1006,85 @@ const realStyle = computed(() => {
 </template>
 
 <style scoped>
+.auth-shell {
+  min-height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background:
+    radial-gradient(circle at 18% 18%, rgba(232, 244, 239, 0.88), transparent 32%),
+    linear-gradient(145deg, #f7f4ed 0%, #edf2ee 100%);
+}
+
+.auth-card {
+  width: min(520px, 100%);
+  border: 1px solid #d9ddd7;
+  border-radius: 8px;
+  padding: 32px;
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: 0 22px 60px rgba(24, 34, 29, 0.12);
+
+  h1 {
+    margin: 0 0 12px;
+    font-size: 28px;
+    line-height: 1.2;
+  }
+}
+
+.eyebrow {
+  margin: 0 0 10px;
+  color: #5f6d66;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.subcopy {
+  margin: 0 0 22px;
+  color: #56615b;
+  line-height: 1.6;
+}
+
+.auth-form {
+  display: grid;
+  gap: 14px;
+
+  label {
+    display: grid;
+    gap: 8px;
+    color: #303133;
+    font-size: 14px;
+    font-weight: 700;
+  }
+}
+
+.auth-submit {
+  margin-top: 4px;
+}
+
+.auth-message,
+.admin-message {
+  min-height: 20px;
+  margin: 0;
+  color: #b42318;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.muted {
+  margin: 0;
+  color: #909399;
+  font-size: 13px;
+}
+
 .index {
   display: flex;
   width: 100%;
   height: 100%;
+  padding: 16px;
+  gap: 12px;
+  background: #f6f4ef;
 
   .file-input {
     width: 0;
@@ -697,9 +1097,28 @@ const realStyle = computed(() => {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(0, 0, 0, 0.1);
+    border: 1px solid #d9ddd7;
+    border-radius: 8px;
+    background:
+      linear-gradient(45deg, rgba(221, 221, 221, 0.56) 25%, transparent 25%),
+      linear-gradient(-45deg, rgba(221, 221, 221, 0.56) 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, rgba(221, 221, 221, 0.56) 75%),
+      linear-gradient(-45deg, transparent 75%, rgba(221, 221, 221, 0.56) 75%),
+      #f4f5f2;
+    background-position:
+      0 0,
+      0 10px,
+      10px -10px,
+      -10px 0;
+    background-size:
+      20px 20px,
+      20px 20px,
+      20px 20px,
+      20px 20px,
+      auto;
     height: 100%;
     overflow: hidden;
+    box-shadow: 0 18px 42px rgba(35, 42, 38, 0.13);
 
     .preview {
       width: 100%;
@@ -775,26 +1194,140 @@ const realStyle = computed(() => {
   .content {
     flex: 1;
     width: 100%;
-    padding: 20px;
+    min-width: 360px;
+    max-width: 520px;
+    padding: 18px;
     display: flex;
     flex-direction: column;
     align-items: center;
     overflow-y: auto;
+    border: 1px solid #d9ddd7;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.82);
+    box-shadow: 0 18px 42px rgba(35, 42, 38, 0.1);
 
     .content-box {
       flex: 1;
+      width: 100%;
     }
 
     .title {
-      font-size: 21px;
-      font-weight: bold;
+      font-size: 24px;
+      font-weight: 900;
       width: 100%;
       text-align: center;
       margin: 0;
+      color: #151816;
+      letter-spacing: 0;
+    }
+
+    .account-bar {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      border: 1px solid #dcdfe6;
+      border-radius: 8px;
+      margin-top: 16px;
+      padding: 10px 12px;
+      background: #f7faf8;
+
+      span {
+        display: block;
+        color: #909399;
+        font-size: 12px;
+      }
+
+      strong {
+        color: #303133;
+        font-size: 14px;
+      }
+    }
+
+    .account-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .admin-panel {
+      width: 100%;
+      border: 1px solid #d9ddd7;
+      border-radius: 8px;
+      margin-top: 12px;
+      padding: 14px;
+      background: #fff;
+    }
+
+    .admin-panel__head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+
+      h2 {
+        margin: 0;
+        font-size: 18px;
+      }
+    }
+
+    .employee-form,
+    .employee-list,
+    .employee-row {
+      display: grid;
+      gap: 10px;
+    }
+
+    .employee-form {
+      grid-template-columns: minmax(0, 1fr);
+      border-bottom: 1px solid #ebeef5;
+      padding-bottom: 12px;
+      margin-bottom: 12px;
+
+      label {
+        display: grid;
+        gap: 6px;
+        color: #303133;
+        font-size: 13px;
+        font-weight: 700;
+      }
+    }
+
+    .employee-row {
+      grid-template-columns: 28px minmax(0, 1fr);
+      border: 1px solid #ebeef5;
+      border-radius: 8px;
+      padding: 10px;
+
+      label {
+        display: grid;
+        gap: 6px;
+        color: #303133;
+        font-size: 13px;
+        font-weight: 700;
+      }
+    }
+
+    .employee-index {
+      width: 24px;
+      height: 24px;
+      display: grid;
+      place-items: center;
+      border-radius: 999px;
+      color: #409eff;
+      background: #ecf5ff;
+      font-size: 12px;
+      font-weight: 800;
+      align-self: center;
     }
 
     .form {
-      margin-top: 40px;
+      border-top: 1px solid #dfe3de;
+      margin-top: 24px;
+      padding-top: 22px;
     }
 
     .btn-box {
@@ -807,6 +1340,11 @@ const realStyle = computed(() => {
 
       .button {
         width: 100px;
+        min-height: 42px;
+        border: 0;
+        font-weight: 800;
+        background: #1f5e52;
+        box-shadow: 0 14px 30px rgba(31, 94, 82, 0.22);
 
         &:first-child {
           margin-right: 10px;
@@ -819,11 +1357,6 @@ const realStyle = computed(() => {
       align-items: center;
       justify-content: flex-end;
       width: 100%;
-
-      .copyright {
-        font-size: 12px;
-        margin-left: 10px;
-      }
 
       .github-icon {
         width: 1em;
@@ -845,6 +1378,42 @@ const realStyle = computed(() => {
 
 .shape-ellipse {
   border-radius: 50%;
+}
+
+:deep(.el-button--primary) {
+  --el-button-bg-color: #1f5e52;
+  --el-button-border-color: #1f5e52;
+  --el-button-hover-bg-color: #2d7366;
+  --el-button-hover-border-color: #2d7366;
+  --el-button-active-bg-color: #17483f;
+  --el-button-active-border-color: #17483f;
+  font-weight: 800;
+}
+
+:deep(.el-radio-button__original-radio:checked + .el-radio-button__inner) {
+  background-color: #1f5e52;
+  border-color: #1f5e52;
+  box-shadow: -1px 0 0 0 #1f5e52;
+}
+
+:deep(.el-form-item__label) {
+  color: #3e4842;
+  font-weight: 800;
+}
+
+:deep(.el-input__wrapper),
+:deep(.el-input-number__decrease),
+:deep(.el-input-number__increase),
+:deep(.el-select__wrapper) {
+  border-radius: 8px;
+}
+
+:deep(.el-slider__bar) {
+  background-color: #1f5e52;
+}
+
+:deep(.el-slider__button) {
+  border-color: #1f5e52;
 }
 
 </style>
