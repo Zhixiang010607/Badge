@@ -2,7 +2,7 @@
 import type {FormInstance, FormRules} from 'element-plus'
 import {Cropper, CropperResult} from 'vue-advanced-cropper'
 import 'vue-advanced-cropper/dist/style.css'
-import {CopyDocument, Crop, Edit, List, Plus} from '@element-plus/icons-vue'
+import {CopyDocument, Crop, Delete, Edit, List, Plus} from '@element-plus/icons-vue'
 import {computed} from 'vue'
 
 type ShapeType = 'circle' | 'rectangle' | 'ellipse' | 'polygon' | 'redHeart' | 'yellowHeart'
@@ -710,8 +710,8 @@ const calcPaper = () => {
   const {color, width, height} = submitForm.value
   const shapeLayout = getShapeLayout(submitForm.value)
 
-  const previewBoxWidth = previewBox.value ? previewBox.value.offsetWidth - 40 : 0
-  const previewBoxHeight = previewBox.value ? previewBox.value.offsetHeight - 40 : 0
+  const previewBoxWidth = previewBox.value ? previewBox.value.offsetWidth - 120 : 0
+  const previewBoxHeight = previewBox.value ? previewBox.value.offsetHeight - 120 : 0
 
   let scale = 1
   if (previewBoxWidth / previewBoxHeight > width / height) {
@@ -1015,6 +1015,72 @@ const pasteImage = (i: number, j: number) => {
   tempImages.value[i][j] = JSON.parse(JSON.stringify(copyTemp.value))
 }
 
+const cloneValue = (value: string) => JSON.parse(JSON.stringify(value || ''))
+
+const hasCopiedImage = () => {
+  return Boolean(copyItem.value)
+}
+
+const fillRowFromCopiedImage = (rowIndex: number) => {
+  if (!hasCopiedImage()) {
+    ElMessage.warning('请先复制一张图片')
+    return
+  }
+  const image = cloneValue(copyItem.value)
+  const temp = cloneValue(copyTemp.value)
+  images.value[rowIndex] = images.value[rowIndex].map(() => cloneValue(image))
+  tempImages.value[rowIndex] = tempImages.value[rowIndex].map(() => cloneValue(temp))
+  ElMessage.success('已粘贴到当前行')
+}
+
+const fillColumnFromCopiedImage = (colIndex: number) => {
+  if (!hasCopiedImage()) {
+    ElMessage.warning('请先复制一张图片')
+    return
+  }
+  const image = cloneValue(copyItem.value)
+  const temp = cloneValue(copyTemp.value)
+  images.value.forEach((row, rowIndex) => {
+    row[colIndex] = cloneValue(image)
+    tempImages.value[rowIndex][colIndex] = cloneValue(temp)
+  })
+  ElMessage.success('已粘贴到当前列')
+}
+
+const fillAllFromCopiedImage = () => {
+  if (!hasCopiedImage()) {
+    ElMessage.warning('请先复制一张图片')
+    return
+  }
+  const image = cloneValue(copyItem.value)
+  const temp = cloneValue(copyTemp.value)
+  images.value = images.value.map((row) => row.map(() => cloneValue(image)))
+  tempImages.value = tempImages.value.map((row) => row.map(() => cloneValue(temp)))
+  ElMessage.success('已粘贴到全部位置')
+}
+
+const clearRow = (rowIndex: number) => {
+  images.value[rowIndex] = images.value[rowIndex].map(() => '')
+  tempImages.value[rowIndex] = tempImages.value[rowIndex].map(() => '')
+  ElMessage.success('已清空当前行')
+}
+
+const clearColumn = (colIndex: number) => {
+  images.value.forEach((row, rowIndex) => {
+    row[colIndex] = ''
+    tempImages.value[rowIndex][colIndex] = ''
+  })
+  ElMessage.success('已清空当前列')
+}
+
+const clearAllImages = () => {
+  images.value = images.value.map((row) => row.map(() => ''))
+  tempImages.value = tempImages.value.map((row) => row.map(() => ''))
+  copyItem.value = ''
+  copyTemp.value = ''
+  ElMessage.success('已全部清空')
+}
+
 const loadImg = (src: string): Promise<HTMLImageElement> => {
   return new Promise((resolve, reject) => {
     const img = new Image()
@@ -1045,6 +1111,20 @@ const toolbarOutside = computed(() => {
   const visibleWidth = cmTo600Dpi(shapeLayout.inner.width) * previewScale.value
   const visibleHeight = cmTo600Dpi(shapeLayout.inner.height) * previewScale.value
   return Math.min(visibleWidth, visibleHeight) < 150
+})
+
+const operationCellStyle = computed(() => {
+  const shapeLayout = getShapeLayout(submitForm.value)
+  return {
+    width: `${cmTo600Dpi(shapeLayout.outer.width)}px`,
+    height: `${cmTo600Dpi(shapeLayout.outer.height)}px`
+  }
+})
+
+const operationButtonScaleStyle = computed(() => {
+  return {
+    '--operation-scale': btnScale.value
+  }
 })
 </script>
 
@@ -1081,7 +1161,40 @@ const toolbarOutside = computed(() => {
   <div v-else class="index">
     <div ref="previewBox" class="preview-box">
       <div class="preview" ref="preview">
+        <div class="column-actions">
+          <div
+            class="column-action-cell"
+            v-for="(_, j) in (images[0] || [])"
+            :key="`column-action-${j}`"
+            :style="operationCellStyle"
+          >
+            <div class="operation-buttons operation-buttons--column" :style="operationButtonScaleStyle">
+              <el-tooltip content="把已复制图片粘贴到这一列" placement="top">
+                <el-button :icon="CopyDocument" circle @click="fillColumnFromCopiedImage(j)"/>
+              </el-tooltip>
+              <el-tooltip content="清空这一列" placement="top">
+                <el-button :icon="Delete" circle @click="clearColumn(j)"/>
+              </el-tooltip>
+            </div>
+          </div>
+        </div>
+        <div class="corner-actions operation-buttons" :style="operationButtonScaleStyle">
+          <el-tooltip content="把已复制图片粘贴到全部位置" placement="top">
+            <el-button :icon="CopyDocument" circle @click="fillAllFromCopiedImage"/>
+          </el-tooltip>
+          <el-tooltip content="全部清空" placement="top">
+            <el-button :icon="Delete" circle @click="clearAllImages"/>
+          </el-tooltip>
+        </div>
         <div class="row" v-for="(row, i) of images" :key="i">
+          <div class="row-actions operation-buttons" :style="operationButtonScaleStyle">
+            <el-tooltip content="把已复制图片粘贴到这一行" placement="left">
+              <el-button :icon="CopyDocument" circle @click="fillRowFromCopiedImage(i)"/>
+            </el-tooltip>
+            <el-tooltip content="清空这一行" placement="left">
+              <el-button :icon="Delete" circle @click="clearRow(i)"/>
+            </el-tooltip>
+          </div>
           <div
             ref="badgeBg"
             class="badge-bg"
@@ -1425,6 +1538,7 @@ const toolbarOutside = computed(() => {
     box-shadow: 0 18px 42px rgba(35, 42, 38, 0.13);
 
     .preview {
+      position: relative;
       width: 100%;
       height: 100%;
       background: #fff;
@@ -1432,12 +1546,96 @@ const toolbarOutside = computed(() => {
       align-items: center;
       justify-content: space-evenly;
       flex-direction: column;
+      overflow: visible;
 
-      .row {
+      .column-actions {
+        position: absolute;
+        top: -48px;
+        left: 0;
         width: 100%;
         display: flex;
         align-items: center;
         justify-content: space-evenly;
+        pointer-events: none;
+      }
+
+      .column-action-cell {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        pointer-events: auto;
+      }
+
+      .corner-actions {
+        position: absolute;
+        top: -48px;
+        left: -64px;
+        z-index: 30;
+        pointer-events: auto;
+        transform: scale(var(--operation-scale));
+        transform-origin: top left;
+      }
+
+      .operation-buttons {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 4px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.96);
+        border: 1px solid rgba(42, 59, 53, 0.12);
+        box-shadow: 0 8px 22px rgba(29, 44, 39, 0.14);
+        transform: scale(var(--operation-scale));
+        transform-origin: center;
+
+        :deep(.el-button) {
+          width: 28px;
+          height: 28px;
+          min-height: 28px;
+          margin: 0;
+          color: #32413b;
+          background: #fff;
+          border-color: rgba(40, 58, 52, 0.14);
+        }
+
+        :deep(.el-button:hover) {
+          color: #1f5e52;
+          border-color: #1f5e52;
+        }
+      }
+
+      .row {
+        position: relative;
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: space-evenly;
+
+        .row-actions {
+          position: absolute;
+          left: -64px;
+          top: 50%;
+          z-index: 30;
+          pointer-events: auto;
+          transform: translateY(-50%) scale(var(--operation-scale));
+          transform-origin: center left;
+
+          :deep(.el-button) {
+            width: 28px;
+            height: 28px;
+            min-height: 28px;
+            margin: 0;
+            color: #32413b;
+            background: #fff;
+            border-color: rgba(40, 58, 52, 0.14);
+          }
+
+          :deep(.el-button:hover) {
+            color: #1f5e52;
+            border-color: #1f5e52;
+          }
+        }
 
         .badge-bg {
           position: relative;
