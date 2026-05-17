@@ -117,8 +117,6 @@ const shapeOptions: Array<{ label: string, value: ShapeType }> = [
   {label: '矩形', value: 'rectangle'},
   {label: '椭圆', value: 'ellipse'},
   {label: '正多边形', value: 'polygon'},
-  {label: '红色心形', value: 'redHeart'},
-  {label: '黄色心形', value: 'yellowHeart'},
 ]
 
 const fixedShapeSize: Record<'redHeart' | 'yellowHeart', ShapeSize> = {
@@ -235,6 +233,7 @@ const employeeForm = reactive({
 const employeeAccounts = ref<EmployeeAccount[]>([])
 const shapeTemplates = ref<ShapeTemplate[]>([])
 const shapeSelection = ref<string>(ruleForm.shape)
+const presetSelection = ref<string>('')
 
 const cloneRuleForm = (form: RuleForm): RuleForm => JSON.parse(JSON.stringify(form))
 
@@ -284,7 +283,40 @@ const loadShapeTemplates = async () => {
 }
 
 const shapeSelectOptions = computed<ShapeOption[]>(() => [
-  ...shapeOptions,
+  ...shapeOptions
+])
+
+const presetTemplateOptions = computed<ShapeOption[]>(() => [
+  {
+    label: '红色心形',
+    value: 'preset-redHeart',
+    template: {
+      id: 'preset-redHeart',
+      label: '红色心形',
+      form: {
+        ...cloneRuleForm(ruleForm),
+        shape: 'redHeart',
+        row: 4,
+        col: 3,
+        padding: 0.42
+      }
+    }
+  },
+  {
+    label: '黄色心形',
+    value: 'preset-yellowHeart',
+    template: {
+      id: 'preset-yellowHeart',
+      label: '黄色心形',
+      form: {
+        ...cloneRuleForm(ruleForm),
+        shape: 'yellowHeart',
+        row: 9,
+        col: 5,
+        padding: 0.1
+      }
+    }
+  },
   ...shapeTemplates.value.map((template) => ({
     label: template.label,
     value: template.id,
@@ -292,34 +324,26 @@ const shapeSelectOptions = computed<ShapeOption[]>(() => [
   }))
 ])
 
-const applyHeartDefaults = (shape: ShapeType) => {
-  if (shape === 'yellowHeart') {
-    ruleForm.row = 9
-    ruleForm.col = 5
-    ruleForm.padding = 0.1
-  }
-  if (shape === 'redHeart') {
-    ruleForm.row = 4
-    ruleForm.col = 3
-    ruleForm.padding = 0.42
-  }
-}
-
 const applyShapeTemplate = (template: ShapeTemplate) => {
   Object.assign(ruleForm, cloneRuleForm(template.form))
-  shapeSelection.value = template.id
+  shapeSelection.value = ['circle', 'rectangle', 'ellipse', 'polygon'].includes(template.form.shape)
+    ? template.form.shape
+    : ''
+  presetSelection.value = template.id
   ElMessage.success(`已套用模板：${template.label}`)
 }
 
 const handleShapeSelection = (value: string) => {
-  const template = shapeTemplates.value.find((item) => item.id === value)
-  if (template) {
-    applyShapeTemplate(template)
-    return
-  }
   ruleForm.shape = value as ShapeType
   shapeSelection.value = value
-  applyHeartDefaults(ruleForm.shape)
+  presetSelection.value = ''
+}
+
+const handlePresetSelection = (value: string) => {
+  const option = presetTemplateOptions.value.find((item) => item.value === value)
+  if (option?.template) {
+    applyShapeTemplate(option.template)
+  }
 }
 
 const saveCurrentShapeTemplate = async () => {
@@ -344,7 +368,7 @@ const saveCurrentShapeTemplate = async () => {
     } else {
       shapeTemplates.value.push(template)
     }
-    shapeSelection.value = template.id
+    presetSelection.value = template.id
     ElMessage.success(`已保存模板：${label}`)
   } catch (error: any) {
     ElMessage.error(error?.message || '模板保存失败')
@@ -1457,6 +1481,13 @@ const operationButtonScaleStyle = computed(() => {
             <div class="shape-template-row">
               <el-select v-model="shapeSelection" @change="handleShapeSelection">
                 <el-option v-for="item in shapeSelectOptions" :key="item.value" :label="item.label" :value="item.value"/>
+              </el-select>
+            </div>
+          </el-form-item>
+          <el-form-item label="预设置模板">
+            <div class="shape-template-row">
+              <el-select v-model="presetSelection" clearable placeholder="选择预设置模板" @change="handlePresetSelection">
+                <el-option v-for="item in presetTemplateOptions" :key="item.value" :label="item.label" :value="item.value"/>
               </el-select>
               <el-button v-if="currentUser.role === 'admin'" @click="saveCurrentShapeTemplate">保存当前模板</el-button>
             </div>
