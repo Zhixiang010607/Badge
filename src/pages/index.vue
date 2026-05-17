@@ -233,6 +233,9 @@ const shapeSelection = ref<string>(ruleForm.shape)
 const presetSelection = ref<string>('')
 const usePresetTemplate = ref(true)
 const isPresetActive = computed(() => usePresetTemplate.value)
+const selectedDatabaseTemplate = computed(() => {
+  return shapeTemplates.value.find((item) => item.id === presetSelection.value)
+})
 
 const cloneRuleForm = (form: RuleForm): RuleForm => JSON.parse(JSON.stringify(form))
 
@@ -405,6 +408,40 @@ const saveCurrentShapeTemplate = async () => {
     ElMessage.success(`已保存模板：${label}`)
   } catch (error: any) {
     ElMessage.error(error?.message || '模板保存失败')
+  }
+}
+
+const deleteCurrentShapeTemplate = async () => {
+  if (currentUser.value?.role !== 'admin') {
+    ElMessage.warning('只有管理员可以删除模板')
+    return
+  }
+  const template = selectedDatabaseTemplate.value
+  if (!template) {
+    ElMessage.warning('请选择一个已保存的模板')
+    return
+  }
+  try {
+    await ElMessageBox.confirm(
+      `你确定删除模板「${template.label}」吗？`,
+      '删除模板',
+      {
+        confirmButtonText: '确定删除',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+    await authApiRequest(`/api/templates/${encodeURIComponent(template.id)}`, {
+      method: 'DELETE'
+    })
+    shapeTemplates.value = shapeTemplates.value.filter((item) => item.id !== template.id)
+    resetInitialTemplateState()
+    ElMessage.success('模板已删除')
+  } catch (error: any) {
+    if (error === 'cancel' || error === 'close') {
+      return
+    }
+    ElMessage.error(error?.message || '模板删除失败')
   }
 }
 
@@ -1519,6 +1556,15 @@ const operationButtonScaleStyle = computed(() => {
                 <el-option v-for="item in presetTemplateOptions" :key="item.value" :label="item.label" :value="item.value"/>
               </el-select>
               <el-checkbox v-model="usePresetTemplate" @change="handlePresetToggle">使用模板</el-checkbox>
+              <el-button
+                v-if="currentUser.role === 'admin'"
+                type="danger"
+                plain
+                :disabled="!selectedDatabaseTemplate"
+                @click="deleteCurrentShapeTemplate"
+              >
+                删除模板
+              </el-button>
             </div>
           </el-form-item>
           <el-form-item label="形状" prop="shape">
