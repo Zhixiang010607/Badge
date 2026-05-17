@@ -656,21 +656,19 @@ const getShapeStyle = (form: RuleForm) => {
 }
 
 const onSubmit = () => {
-  if (images.value.every(i => i.every(j => !j))) {
-    validateForm()
-    return
-  }
-  ElMessageBox.confirm(
-    '已选图片将会被清空，是否继续？',
-    '提示',
-    {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning',
+  validateForm()
+}
+
+const buildImageGrid = (row: number, col: number, source: Array<Array<string>>) => {
+  const arr: Array<Array<string>> = []
+  for (let i = 0; i < row; i++) {
+    const rowArr: Array<string> = []
+    for (let j = 0; j < col; j++) {
+      rowArr.push(source[i]?.[j] || '')
     }
-  ).then(() => {
-    validateForm()
-  })
+    arr.push(rowArr)
+  }
+  return arr
 }
 
 const validateForm = () => {
@@ -689,16 +687,8 @@ const validateForm = () => {
         return
       }
 
-      const arr = []
-      for (let i = 0; i < row; i++) {
-        const rowArr = []
-        for (let j = 0; j < col; j++) {
-          rowArr.push('')
-        }
-        arr.push(rowArr)
-      }
-      images.value = arr
-      tempImages.value = JSON.parse(JSON.stringify(arr))
+      images.value = buildImageGrid(row, col, images.value)
+      tempImages.value = buildImageGrid(row, col, tempImages.value)
 
       submitForm.value = {...ruleForm}
       calcPaper()
