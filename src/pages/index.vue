@@ -710,8 +710,8 @@ const calcPaper = () => {
   const {color, width, height} = submitForm.value
   const shapeLayout = getShapeLayout(submitForm.value)
 
-  const previewBoxWidth = previewBox.value ? previewBox.value.offsetWidth - 240 : 0
-  const previewBoxHeight = previewBox.value ? previewBox.value.offsetHeight - 240 : 0
+  const previewBoxWidth = previewBox.value ? previewBox.value.offsetWidth - 190 : 0
+  const previewBoxHeight = previewBox.value ? previewBox.value.offsetHeight - 190 : 0
 
   let scale = 1
   if (previewBoxWidth / previewBoxHeight > width / height) {
