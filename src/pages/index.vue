@@ -1127,7 +1127,7 @@ const operationButtonScaleStyle = computed(() => {
   return {
     '--operation-scale': btnScale.value,
     '--operation-offset': `${96 * btnScale.value}px`,
-    '--column-operation-offset': `${cmTo600Dpi(1)}px`
+    '--column-operation-offset': `${38 * btnScale.value}px`
   }
 })
 </script>
