@@ -710,8 +710,8 @@ const calcPaper = () => {
   const {color, width, height} = submitForm.value
   const shapeLayout = getShapeLayout(submitForm.value)
 
-  const previewBoxWidth = previewBox.value ? previewBox.value.offsetWidth - 180 : 0
-  const previewBoxHeight = previewBox.value ? previewBox.value.offsetHeight - 180 : 0
+  const previewBoxWidth = previewBox.value ? previewBox.value.offsetWidth - 300 : 0
+  const previewBoxHeight = previewBox.value ? previewBox.value.offsetHeight - 300 : 0
 
   let scale = 1
   if (previewBoxWidth / previewBoxHeight > width / height) {
@@ -1550,7 +1550,7 @@ const operationButtonScaleStyle = computed(() => {
 
       .column-actions {
         position: absolute;
-        top: -96px;
+        top: -160px;
         left: 0;
         width: 100%;
         display: flex;
@@ -1568,8 +1568,8 @@ const operationButtonScaleStyle = computed(() => {
 
       .corner-actions {
         position: absolute;
-        top: -96px;
-        left: -144px;
+        top: -160px;
+        left: -260px;
         z-index: 30;
         pointer-events: auto;
         transform: scale(var(--operation-scale));
@@ -1614,7 +1614,7 @@ const operationButtonScaleStyle = computed(() => {
 
         .row-actions {
           position: absolute;
-          left: -144px;
+          left: -260px;
           top: 50%;
           z-index: 30;
           pointer-events: auto;
