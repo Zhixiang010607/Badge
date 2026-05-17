@@ -733,7 +733,8 @@ const calcPaper = () => {
     badgeBg.value.forEach(item => {
       item.style.width = `${cmTo600Dpi(shapeLayout.outer.width)}px`
       item.style.height = `${cmTo600Dpi(shapeLayout.outer.height)}px`
-      item.style.background = color
+      item.style.background = 'transparent'
+      item.style.setProperty('--badge-fill-color', color)
       if (submitForm.value.shape === 'polygon') {
         item.style.display = 'block'
         item.style.position = 'relative'
@@ -1095,7 +1096,7 @@ const goGitHub = () => {
 }
 
 const fakeStyle = computed(() => {
-  return `width: ${btnScale.value * 32}px; margin-right: ${btnScale.value * 10}px;`
+  return `width: ${btnScale.value * 20}px; margin-right: ${btnScale.value * 5}px;`
 })
 
 const realStyle = computed(() => {
@@ -1105,13 +1106,6 @@ const realStyle = computed(() => {
 const isEditableBadge = (i: number, j: number) => {
   return editable.value === `${i},${j}`
 }
-
-const toolbarOutside = computed(() => {
-  const shapeLayout = getShapeLayout(submitForm.value)
-  const visibleWidth = cmTo600Dpi(shapeLayout.inner.width) * previewScale.value
-  const visibleHeight = cmTo600Dpi(shapeLayout.inner.height) * previewScale.value
-  return Math.min(visibleWidth, visibleHeight) < 150
-})
 
 const operationCellStyle = computed(() => {
   const shapeLayout = getShapeLayout(submitForm.value)
@@ -1123,7 +1117,8 @@ const operationCellStyle = computed(() => {
 
 const operationButtonScaleStyle = computed(() => {
   return {
-    '--operation-scale': btnScale.value
+    '--operation-scale': btnScale.value,
+    '--operation-offset': `${72 * btnScale.value}px`
   }
 })
 </script>
@@ -1199,12 +1194,16 @@ const operationButtonScaleStyle = computed(() => {
             ref="badgeBg"
             class="badge-bg"
             :class="[getShapeClass(submitForm.shape), {hidden: loading && !image}]"
-            :style="getShapeStyle(submitForm)"
             v-for="(image, j) in row"
             :key="j"
             @mouseenter="editable = `${i},${j}`"
             @mouseleave="editable = ''"
           >
+            <div
+              class="badge-bg-shape"
+              :class="getShapeClass(submitForm.shape)"
+              :style="getShapeStyle(submitForm)"
+            ></div>
             <div
               ref="badge"
               class="badge"
@@ -1212,48 +1211,33 @@ const operationButtonScaleStyle = computed(() => {
               :style="getShapeStyle(submitForm)"
             >
               <img v-if="image" class="image" :src="image" alt="" @click="addImage(i, j)"/>
-              <div v-if="(!image || isEditableBadge(i, j)) && !toolbarOutside"
-                   class="btn-box">
-                <div class="inner-content">
-                  <div class="fake" :style="fakeStyle"></div>
-                  <el-tooltip :content="image ? '更换图片' : '添加图片'" placement="top">
-                    <el-button class="real" :style="realStyle" :icon="image ? Edit : Plus" circle
-                               @click="addImage(i, j)"/>
-                  </el-tooltip>
-                </div>
-                <div v-if="tempImages[i][j]" class="inner-content">
-                  <div class="fake" :style="fakeStyle"></div>
-                  <el-tooltip content="裁剪图片" placement="top">
-                    <el-button class="real" :style="realStyle" :icon="Crop" circle @click="editImage(i, j)"/>
-                  </el-tooltip>
-                </div>
-                <div v-if="tempImages[i][j]" class="inner-content">
-                  <div class="fake" :style="fakeStyle"></div>
-                  <el-tooltip content="复制这张图片" placement="top">
-                    <el-button class="real" :style="realStyle" :icon="CopyDocument" circle @click="copyImage(i, j)"/>
-                  </el-tooltip>
-                </div>
-                <div v-if="copyItem" class="inner-content">
-                  <div class="fake" :style="fakeStyle"></div>
-                  <el-tooltip content="粘贴已复制图片" placement="top">
-                    <el-button class="real" :style="realStyle" :icon="List" circle @click="pasteImage(i, j)"/>
-                  </el-tooltip>
-                </div>
-              </div>
             </div>
-            <div v-if="(!image || isEditableBadge(i, j)) && toolbarOutside" class="btn-box btn-box--outside">
-              <el-tooltip :content="image ? '更换图片' : '添加图片'" placement="top">
-                <el-button :icon="image ? Edit : Plus" circle @click="addImage(i, j)"/>
-              </el-tooltip>
-              <el-tooltip v-if="tempImages[i][j]" content="裁剪图片" placement="top">
-                <el-button :icon="Crop" circle @click="editImage(i, j)"/>
-              </el-tooltip>
-              <el-tooltip v-if="tempImages[i][j]" content="复制这张图片" placement="top">
-                <el-button :icon="CopyDocument" circle @click="copyImage(i, j)"/>
-              </el-tooltip>
-              <el-tooltip v-if="copyItem" content="粘贴已复制图片" placement="top">
-                <el-button :icon="List" circle @click="pasteImage(i, j)"/>
-              </el-tooltip>
+            <div class="badge-actions" :class="{'is-open': isEditableBadge(i, j)}">
+              <div class="inner-content">
+                <div class="fake" :style="fakeStyle"></div>
+                <el-tooltip :content="image ? '更换图片' : '添加图片'" placement="top">
+                  <el-button class="real" :style="realStyle" :icon="image ? Edit : Plus" circle
+                             @click="addImage(i, j)"/>
+                </el-tooltip>
+              </div>
+              <div v-if="tempImages[i][j] && isEditableBadge(i, j)" class="inner-content">
+                <div class="fake" :style="fakeStyle"></div>
+                <el-tooltip content="裁剪图片" placement="top">
+                  <el-button class="real" :style="realStyle" :icon="Crop" circle @click="editImage(i, j)"/>
+                </el-tooltip>
+              </div>
+              <div v-if="tempImages[i][j] && isEditableBadge(i, j)" class="inner-content">
+                <div class="fake" :style="fakeStyle"></div>
+                <el-tooltip content="复制这张图片" placement="top">
+                  <el-button class="real" :style="realStyle" :icon="CopyDocument" circle @click="copyImage(i, j)"/>
+                </el-tooltip>
+              </div>
+              <div v-if="copyItem && isEditableBadge(i, j)" class="inner-content">
+                <div class="fake" :style="fakeStyle"></div>
+                <el-tooltip content="粘贴已复制图片" placement="top">
+                  <el-button class="real" :style="realStyle" :icon="List" circle @click="pasteImage(i, j)"/>
+                </el-tooltip>
+              </div>
             </div>
           </div>
         </div>
@@ -1550,7 +1534,7 @@ const operationButtonScaleStyle = computed(() => {
 
       .column-actions {
         position: absolute;
-        top: -160px;
+        top: calc(var(--operation-offset) * -1);
         left: 0;
         width: 100%;
         display: flex;
@@ -1568,8 +1552,8 @@ const operationButtonScaleStyle = computed(() => {
 
       .corner-actions {
         position: absolute;
-        top: -160px;
-        left: -260px;
+        top: calc(var(--operation-offset) * -1);
+        left: calc(var(--operation-offset) * -1);
         z-index: 30;
         pointer-events: auto;
         transform: scale(var(--operation-scale));
@@ -1590,9 +1574,9 @@ const operationButtonScaleStyle = computed(() => {
         transform-origin: center;
 
         :deep(.el-button) {
-          width: 24px;
-          height: 24px;
-          min-height: 24px;
+          width: 18px;
+          height: 18px;
+          min-height: 18px;
           margin: 0;
           color: #32413b;
           background: #fff;
@@ -1614,7 +1598,7 @@ const operationButtonScaleStyle = computed(() => {
 
         .row-actions {
           position: absolute;
-          left: -260px;
+          left: calc(var(--operation-offset) * -1);
           top: 50%;
           z-index: 30;
           pointer-events: auto;
@@ -1622,9 +1606,9 @@ const operationButtonScaleStyle = computed(() => {
           transform-origin: center left;
 
           :deep(.el-button) {
-            width: 24px;
-            height: 24px;
-            min-height: 24px;
+            width: 18px;
+            height: 18px;
+            min-height: 18px;
             margin: 0;
             color: #32413b;
             background: #fff;
@@ -1639,7 +1623,7 @@ const operationButtonScaleStyle = computed(() => {
 
         .badge-bg {
           position: relative;
-          background: rgba(0, 0, 0, 0.1);
+          background: transparent;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -1649,9 +1633,17 @@ const operationButtonScaleStyle = computed(() => {
             opacity: 0;
           }
 
+          .badge-bg-shape {
+            position: absolute;
+            inset: 0;
+            background: var(--badge-fill-color, rgba(0, 0, 0, 0.1));
+            pointer-events: none;
+          }
+
           .badge {
             position: relative;
             overflow: hidden;
+            z-index: 1;
 
             .image {
               width: 100%;
@@ -1659,66 +1651,49 @@ const operationButtonScaleStyle = computed(() => {
               object-fit: cover;
               cursor: pointer;
             }
-
-            .btn-box {
-              position: absolute;
-              top: 0;
-              left: 0;
-              width: 100%;
-              height: 100%;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              background: rgba(0, 0, 0, 0.1);
-
-              .inner-content {
-                position: relative;
-
-                &:last-child {
-                  margin-right: 0 !important;
-                }
-
-                .fake {
-                  visibility: hidden;
-                }
-
-                .real {
-                  position: absolute;
-                  top: 50%;
-                  left: 50%;
-                }
-              }
-            }
           }
 
-          > .btn-box--outside {
+          .badge-actions {
             position: absolute;
+            top: 50%;
             left: 50%;
-            top: calc(100% + 8px);
-            z-index: 20;
-            width: auto;
-            height: auto;
-            min-width: max-content;
-            padding: 4px 6px;
+            z-index: 25;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 6px;
-            background: rgba(255, 255, 255, 0.94);
-            border: 1px solid rgba(42, 59, 53, 0.12);
-            border-radius: 999px;
-            box-shadow: 0 8px 22px rgba(29, 44, 39, 0.16);
-            transform: translateX(-50%) scale(v-bind(btnScale));
-            transform-origin: top center;
+            transform: translate(-50%, -50%);
+            pointer-events: auto;
+
+            .inner-content {
+              position: relative;
+
+              &:last-child {
+                margin-right: 0 !important;
+              }
+
+              .fake {
+                visibility: hidden;
+              }
+
+              .real {
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                width: 20px;
+                height: 20px;
+                min-height: 20px;
+                color: #606b66;
+                background: rgba(255, 255, 255, 0.96);
+                border-color: rgba(70, 82, 77, 0.14);
+                box-shadow: 0 4px 12px rgba(28, 39, 35, 0.14);
+              }
+            }
 
             :deep(.el-button) {
-              width: 28px;
-              height: 28px;
-              min-height: 28px;
+              width: 20px;
+              height: 20px;
+              min-height: 20px;
               margin: 0;
-              color: #32413b;
-              background: #fff;
-              border-color: rgba(40, 58, 52, 0.14);
             }
           }
         }
