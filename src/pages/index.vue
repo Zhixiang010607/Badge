@@ -735,6 +735,8 @@ const calcPaper = () => {
       item.style.height = `${cmTo600Dpi(shapeLayout.outer.height)}px`
       item.style.background = 'transparent'
       item.style.setProperty('--badge-fill-color', color)
+      item.style.setProperty('--badge-action-left', `${cmTo600Dpi(shapeLayout.offsetX + shapeLayout.inner.width / 2)}px`)
+      item.style.setProperty('--badge-action-top', `${cmTo600Dpi(shapeLayout.offsetY + shapeLayout.inner.height / 2)}px`)
       if (submitForm.value.shape === 'polygon') {
         item.style.display = 'block'
         item.style.position = 'relative'
@@ -1671,8 +1673,8 @@ const operationButtonScaleStyle = computed(() => {
 
           .badge-actions {
             position: absolute;
-            top: 50%;
-            left: 50%;
+            top: var(--badge-action-top, 50%);
+            left: var(--badge-action-left, 50%);
             z-index: 25;
             display: grid;
             grid-template-columns: repeat(2, 20px);
