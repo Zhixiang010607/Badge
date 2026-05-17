@@ -1651,6 +1651,7 @@ const operationButtonScaleStyle = computed(() => {
             position: relative;
             overflow: hidden;
             z-index: 1;
+            background: #c4c4c4;
 
             .image {
               width: 100%;
