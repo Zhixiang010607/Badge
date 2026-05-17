@@ -1220,7 +1220,7 @@ const operationButtonScaleStyle = computed(() => {
                 <el-tooltip content="添加图片" placement="top">
                   <el-button :icon="Plus" circle @click="addImage(i, j)"/>
                 </el-tooltip>
-                <el-tooltip v-if="isEditableBadge(i, j)" :content="copyItem ? '粘贴已复制图片' : '请先复制图片'" placement="top">
+                <el-tooltip class="paste-action" :content="copyItem ? '粘贴已复制图片' : '请先复制图片'" placement="top">
                   <el-button :icon="List" circle :disabled="!copyItem" @click="pasteImage(i, j)"/>
                 </el-tooltip>
               </template>
@@ -1693,6 +1693,14 @@ const operationButtonScaleStyle = computed(() => {
             :deep(.el-button:active) {
               transform: scale(0.88);
               box-shadow: 0 2px 7px rgba(28, 39, 35, 0.18);
+            }
+
+            :deep(.paste-action) {
+              display: none;
+            }
+
+            &:hover :deep(.paste-action) {
+              display: inline-flex;
             }
           }
         }
