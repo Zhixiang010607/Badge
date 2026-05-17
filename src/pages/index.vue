@@ -234,7 +234,8 @@ const employeeAccounts = ref<EmployeeAccount[]>([])
 const shapeTemplates = ref<ShapeTemplate[]>([])
 const shapeSelection = ref<string>(ruleForm.shape)
 const presetSelection = ref<string>('')
-const isPresetActive = computed(() => Boolean(presetSelection.value))
+const usePresetTemplate = ref(true)
+const isPresetActive = computed(() => usePresetTemplate.value && Boolean(presetSelection.value))
 
 const cloneRuleForm = (form: RuleForm): RuleForm => JSON.parse(JSON.stringify(form))
 
@@ -338,15 +339,23 @@ const applyShapeTemplate = (template: ShapeTemplate) => {
 const handleShapeSelection = (value: string) => {
   ruleForm.shape = value as ShapeType
   shapeSelection.value = value
-  presetSelection.value = ''
+  usePresetTemplate.value = false
 }
 
 const handlePresetSelection = (value: string) => {
-  if (!value) {
-    presetSelection.value = ''
+  presetSelection.value = value
+  const option = presetTemplateOptions.value.find((item) => item.value === value)
+  if (usePresetTemplate.value && option?.template) {
+    applyShapeTemplate(option.template)
+  }
+}
+
+const handlePresetToggle = (checked: boolean | string | number) => {
+  usePresetTemplate.value = checked === true
+  if (!usePresetTemplate.value || !presetSelection.value) {
     return
   }
-  const option = presetTemplateOptions.value.find((item) => item.value === value)
+  const option = presetTemplateOptions.value.find((item) => item.value === presetSelection.value)
   if (option?.template) {
     applyShapeTemplate(option.template)
   }
@@ -1485,9 +1494,10 @@ const operationButtonScaleStyle = computed(() => {
           </el-form-item>
           <el-form-item label="预设置模板">
             <div class="shape-template-row">
-              <el-select v-model="presetSelection" clearable placeholder="选择预设置模板" @change="handlePresetSelection">
+              <el-select v-model="presetSelection" placeholder="选择预设置模板" @change="handlePresetSelection">
                 <el-option v-for="item in presetTemplateOptions" :key="item.value" :label="item.label" :value="item.value"/>
               </el-select>
+              <el-checkbox v-model="usePresetTemplate" @change="handlePresetToggle">使用模板</el-checkbox>
             </div>
           </el-form-item>
           <el-form-item label="形状" prop="shape">
