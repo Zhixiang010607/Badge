@@ -234,6 +234,7 @@ const employeeAccounts = ref<EmployeeAccount[]>([])
 const shapeTemplates = ref<ShapeTemplate[]>([])
 const shapeSelection = ref<string>(ruleForm.shape)
 const presetSelection = ref<string>('')
+const isPresetActive = computed(() => Boolean(presetSelection.value))
 
 const cloneRuleForm = (form: RuleForm): RuleForm => JSON.parse(JSON.stringify(form))
 
@@ -330,6 +331,7 @@ const applyShapeTemplate = (template: ShapeTemplate) => {
     ? template.form.shape
     : ''
   presetSelection.value = template.id
+  nextTick(validateForm)
   ElMessage.success(`已套用模板：${template.label}`)
 }
 
@@ -340,6 +342,10 @@ const handleShapeSelection = (value: string) => {
 }
 
 const handlePresetSelection = (value: string) => {
+  if (!value) {
+    presetSelection.value = ''
+    return
+  }
   const option = presetTemplateOptions.value.find((item) => item.value === value)
   if (option?.template) {
     applyShapeTemplate(option.template)
@@ -1467,69 +1473,69 @@ const operationButtonScaleStyle = computed(() => {
         <el-form class="form" ref="ruleFormRef" :model="ruleForm" :rules="rules" label-position="left"
                  label-width="120px">
           <el-form-item label="纸张大小">
-            <el-radio-group v-model="paper">
+            <el-radio-group v-model="paper" :disabled="isPresetActive">
               <el-radio-button v-for="item in paperSize.entries()" :key="item[0]" :label="item[0]"></el-radio-button>
             </el-radio-group>
           </el-form-item>
           <el-form-item v-if="paper === '自定义'" label="纸张宽度(像素)" prop="width">
-            <el-input-number v-model="ruleForm.width" controls-position="right" :min="0.01"/>
+            <el-input-number v-model="ruleForm.width" controls-position="right" :min="0.01" :disabled="isPresetActive"/>
           </el-form-item>
           <el-form-item v-if="paper === '自定义'" label="纸张高度(像素)" prop="height">
-            <el-input-number v-model="ruleForm.height" controls-position="right" :min="0.01"/>
-          </el-form-item>
-          <el-form-item label="形状" prop="shape">
-            <div class="shape-template-row">
-              <el-select v-model="shapeSelection" @change="handleShapeSelection">
-                <el-option v-for="item in shapeSelectOptions" :key="item.value" :label="item.label" :value="item.value"/>
-              </el-select>
-            </div>
+            <el-input-number v-model="ruleForm.height" controls-position="right" :min="0.01" :disabled="isPresetActive"/>
           </el-form-item>
           <el-form-item label="预设置模板">
             <div class="shape-template-row">
               <el-select v-model="presetSelection" clearable placeholder="选择预设置模板" @change="handlePresetSelection">
                 <el-option v-for="item in presetTemplateOptions" :key="item.value" :label="item.label" :value="item.value"/>
               </el-select>
+            </div>
+          </el-form-item>
+          <el-form-item label="形状" prop="shape">
+            <div class="shape-template-row">
+              <el-select v-model="shapeSelection" :disabled="isPresetActive" @change="handleShapeSelection">
+                <el-option v-for="item in shapeSelectOptions" :key="item.value" :label="item.label" :value="item.value"/>
+              </el-select>
               <el-button v-if="currentUser.role === 'admin'" @click="saveCurrentShapeTemplate">保存当前模板</el-button>
             </div>
           </el-form-item>
           <el-form-item label="行数" prop="row">
-            <el-input-number v-model="ruleForm.row" controls-position="right" :min="1"/>
+            <el-input-number v-model="ruleForm.row" controls-position="right" :min="1" :disabled="isPresetActive"/>
           </el-form-item>
           <el-form-item label="列数" prop="col">
-            <el-input-number v-model="ruleForm.col" controls-position="right" :min="1"/>
+            <el-input-number v-model="ruleForm.col" controls-position="right" :min="1" :disabled="isPresetActive"/>
           </el-form-item>
           <el-form-item v-if="ruleForm.shape === 'circle'" label="直径(cm)" prop="diam">
-            <el-input-number v-model="ruleForm.diam" :precision="2" controls-position="right" :min="0.01"/>
+            <el-input-number v-model="ruleForm.diam" :precision="2" controls-position="right" :min="0.01" :disabled="isPresetActive"/>
           </el-form-item>
           <template v-if="ruleForm.shape === 'rectangle'">
             <el-form-item label="宽度(cm)" prop="rectWidth">
-              <el-input-number v-model="ruleForm.rectWidth" :precision="2" controls-position="right" :min="0.01"/>
+              <el-input-number v-model="ruleForm.rectWidth" :precision="2" controls-position="right" :min="0.01" :disabled="isPresetActive"/>
             </el-form-item>
             <el-form-item label="高度(cm)" prop="rectHeight">
-              <el-input-number v-model="ruleForm.rectHeight" :precision="2" controls-position="right" :min="0.01"/>
+              <el-input-number v-model="ruleForm.rectHeight" :precision="2" controls-position="right" :min="0.01" :disabled="isPresetActive"/>
             </el-form-item>
           </template>
           <template v-if="ruleForm.shape === 'ellipse'">
             <el-form-item label="长边(cm)" prop="ellipseLong">
-              <el-input-number v-model="ruleForm.ellipseLong" :precision="2" controls-position="right" :min="0.01"/>
+              <el-input-number v-model="ruleForm.ellipseLong" :precision="2" controls-position="right" :min="0.01" :disabled="isPresetActive"/>
             </el-form-item>
             <el-form-item label="短边(cm)" prop="ellipseShort">
-              <el-input-number v-model="ruleForm.ellipseShort" :precision="2" controls-position="right" :min="0.01"/>
+              <el-input-number v-model="ruleForm.ellipseShort" :precision="2" controls-position="right" :min="0.01" :disabled="isPresetActive"/>
             </el-form-item>
           </template>
           <template v-if="ruleForm.shape === 'polygon'">
             <el-form-item label="边数" prop="polygonSides">
-              <el-input-number v-model="ruleForm.polygonSides" controls-position="right" :min="3" :step="1" :precision="0"/>
+              <el-input-number v-model="ruleForm.polygonSides" controls-position="right" :min="3" :step="1" :precision="0" :disabled="isPresetActive"/>
             </el-form-item>
             <el-form-item label="边长(cm)" prop="polygonSide">
-              <el-input-number v-model="ruleForm.polygonSide" :precision="2" controls-position="right" :min="0.01"/>
+              <el-input-number v-model="ruleForm.polygonSide" :precision="2" controls-position="right" :min="0.01" :disabled="isPresetActive"/>
             </el-form-item>
           </template>
           <el-form-item label="边距(cm)" prop="padding">
-            <el-input-number v-model="ruleForm.padding" :precision="2" controls-position="right" :min="0"/>
+            <el-input-number v-model="ruleForm.padding" :precision="2" controls-position="right" :min="0" :disabled="isPresetActive"/>
           </el-form-item>
           <el-form-item label="边框颜色" prop="color">
-            <el-color-picker v-model="ruleForm.color"/>
+            <el-color-picker v-model="ruleForm.color" :disabled="isPresetActive"/>
           </el-form-item>
         </el-form>
         <el-form class="form" ref="exportFormRef" :model="exportForm" label-position="left"
