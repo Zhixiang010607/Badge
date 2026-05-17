@@ -1288,16 +1288,20 @@ const operationButtonScaleStyle = computed(() => {
           <p v-if="!employeeAccounts.length" class="muted">暂无员工账号</p>
           <div v-for="(account, index) in employeeAccounts" :key="account.id" class="employee-row">
             <span class="employee-index">{{ index + 1 }}</span>
-            <label>
-              账号
-              <el-input :model-value="account.username" @input="(value: string) => updateEmployeeDraft(account.id, 'username', value)"/>
-            </label>
-            <label>
-              新密码
-              <el-input :model-value="account.password || ''" placeholder="留空则不修改密码" @input="(value: string) => updateEmployeeDraft(account.id, 'password', value)"/>
-            </label>
-            <el-button @click="updateEmployeeAccount(account, account.password || '')">保存</el-button>
-            <el-button type="danger" plain @click="removeEmployeeAccount(account.id)">删除</el-button>
+            <div class="employee-fields">
+              <label>
+                账号
+                <el-input :model-value="account.username" @input="(value: string) => updateEmployeeDraft(account.id, 'username', value)"/>
+              </label>
+              <label>
+                新密码
+                <el-input :model-value="account.password || ''" placeholder="留空则不修改密码" @input="(value: string) => updateEmployeeDraft(account.id, 'password', value)"/>
+              </label>
+              <div class="employee-row-actions">
+                <el-button @click="updateEmployeeAccount(account, account.password || '')">保存</el-button>
+                <el-button type="danger" plain @click="removeEmployeeAccount(account.id)">删除</el-button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -1833,9 +1837,17 @@ const operationButtonScaleStyle = computed(() => {
 
     .employee-row {
       grid-template-columns: 28px minmax(0, 1fr);
+      align-items: flex-start;
       border: 1px solid #ebeef5;
       border-radius: 8px;
       padding: 10px;
+      background: #fff;
+    }
+
+    .employee-fields {
+      display: grid;
+      gap: 10px;
+      min-width: 0;
 
       label {
         display: grid;
@@ -1844,6 +1856,12 @@ const operationButtonScaleStyle = computed(() => {
         font-size: 13px;
         font-weight: 700;
       }
+    }
+
+    .employee-row-actions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
     }
 
     .employee-index {
@@ -1856,7 +1874,8 @@ const operationButtonScaleStyle = computed(() => {
       background: #ecf5ff;
       font-size: 12px;
       font-weight: 800;
-      align-self: center;
+      align-self: start;
+      margin-top: 28px;
     }
 
     .form {
