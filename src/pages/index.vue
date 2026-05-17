@@ -138,7 +138,7 @@ watch(paper, (val) => {
 })
 
 const ruleFormRef = ref<FormInstance>()
-const ruleForm = reactive<RuleForm>({
+const defaultRuleForm: RuleForm = {
   shape: 'circle',
   diam: 6.6,
   rectWidth: 5,
@@ -153,7 +153,8 @@ const ruleForm = reactive<RuleForm>({
   row: 4,
   col: 2,
   color: '#DDDDDD'
-})
+}
+const ruleForm = reactive<RuleForm>({...defaultRuleForm})
 
 const exportForm = reactive<ExportForm>({
   fileName: '吧唧图',
@@ -350,9 +351,20 @@ const handlePresetSelection = (value: string) => {
   }
 }
 
+const resetManualSettings = () => {
+  Object.assign(ruleForm, cloneRuleForm(defaultRuleForm))
+  shapeSelection.value = defaultRuleForm.shape
+  presetSelection.value = ''
+  nextTick(validateForm)
+}
+
 const handlePresetToggle = (checked: boolean | string | number) => {
   usePresetTemplate.value = checked === true
-  if (!usePresetTemplate.value || !presetSelection.value) {
+  if (!usePresetTemplate.value) {
+    resetManualSettings()
+    return
+  }
+  if (!presetSelection.value) {
     return
   }
   const option = presetTemplateOptions.value.find((item) => item.value === presetSelection.value)
