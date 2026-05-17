@@ -1218,17 +1218,29 @@ const operationButtonScaleStyle = computed(() => {
               <img v-if="image" class="image" :src="image" alt="" @click="addImage(i, j)"/>
             </div>
             <div class="badge-actions" :class="{'is-open': isEditableBadge(i, j)}">
-              <div class="inner-content">
+              <div v-if="!image" class="inner-content">
                 <div class="fake" :style="fakeStyle"></div>
-                <el-tooltip :content="image ? '更换图片' : '添加图片'" placement="top">
-                  <el-button class="real" :style="realStyle" :icon="image ? Edit : Plus" circle
+                <el-tooltip content="添加图片" placement="top">
+                  <el-button class="real" :style="realStyle" :icon="Plus" circle
                              @click="addImage(i, j)"/>
+                </el-tooltip>
+              </div>
+              <div v-if="image && !isEditableBadge(i, j)" class="inner-content">
+                <div class="fake" :style="fakeStyle"></div>
+                <el-tooltip content="复制这张图片" placement="top">
+                  <el-button class="real" :style="realStyle" :icon="CopyDocument" circle @click="copyImage(i, j)"/>
                 </el-tooltip>
               </div>
               <div v-if="!image && isEditableBadge(i, j)" class="inner-content">
                 <div class="fake" :style="fakeStyle"></div>
                 <el-tooltip :content="copyItem ? '粘贴已复制图片' : '请先复制图片'" placement="top">
                   <el-button class="real" :style="realStyle" :icon="List" circle :disabled="!copyItem" @click="pasteImage(i, j)"/>
+                </el-tooltip>
+              </div>
+              <div v-if="image && isEditableBadge(i, j)" class="inner-content">
+                <div class="fake" :style="fakeStyle"></div>
+                <el-tooltip content="更换图片" placement="top">
+                  <el-button class="real" :style="realStyle" :icon="Edit" circle @click="addImage(i, j)"/>
                 </el-tooltip>
               </div>
               <div v-if="image && isEditableBadge(i, j)" class="inner-content">
