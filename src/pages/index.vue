@@ -81,7 +81,6 @@ interface EmployeeAccount {
 
 const AUTH_SESSION_KEY = 'badge-print-session-v1'
 const AUTH_REMEMBER_KEY = 'badge-print-remember-login-v1'
-const SHAPE_TEMPLATE_KEY = 'badge-print-shape-templates-v1'
 const ADMIN_USERNAME = 'yanyujie123'
 const windowWithAuthConfig = window as Window & {
   BADGE_AUTH_API_URL?: string
@@ -262,26 +261,26 @@ const buildTemplateLabel = (form: RuleForm) => {
   }
 }
 
-const loadShapeTemplates = () => {
-  try {
-    const saved = JSON.parse(window.localStorage.getItem(SHAPE_TEMPLATE_KEY) || '[]')
-    if (!Array.isArray(saved)) {
-      return
-    }
-    shapeTemplates.value = saved
-      .filter((item) => item?.id && item?.label && item?.form?.shape)
-      .map((item) => ({
-        id: String(item.id),
-        label: String(item.label),
-        form: cloneRuleForm(item.form)
-      }))
-  } catch {
-    shapeTemplates.value = []
-  }
-}
+const normalizeShapeTemplate = (item: any): ShapeTemplate => ({
+  id: String(item.id),
+  label: String(item.label),
+  form: cloneRuleForm(item.form)
+})
 
-const writeShapeTemplates = () => {
-  window.localStorage.setItem(SHAPE_TEMPLATE_KEY, JSON.stringify(shapeTemplates.value))
+const loadShapeTemplates = async () => {
+  if (!currentUser.value) {
+    shapeTemplates.value = []
+    return
+  }
+  try {
+    const data = await authApiRequest('/api/templates')
+    shapeTemplates.value = Array.isArray(data.templates)
+      ? data.templates.filter((item: any) => item?.id && item?.label && item?.form?.shape).map(normalizeShapeTemplate)
+      : []
+  } catch (error: any) {
+    shapeTemplates.value = []
+    ElMessage.warning(error?.message || '模板读取失败')
+  }
 }
 
 const shapeSelectOptions = computed<ShapeOption[]>(() => [
@@ -323,27 +322,33 @@ const handleShapeSelection = (value: string) => {
   applyHeartDefaults(ruleForm.shape)
 }
 
-const saveCurrentShapeTemplate = () => {
+const saveCurrentShapeTemplate = async () => {
   if (currentUser.value?.role !== 'admin') {
     ElMessage.warning('只有管理员可以保存模板')
     return
   }
   const form = cloneRuleForm(ruleForm)
   const label = buildTemplateLabel(form)
-  const existingIndex = shapeTemplates.value.findIndex((item) => item.label === label)
-  const template: ShapeTemplate = {
-    id: existingIndex >= 0 ? shapeTemplates.value[existingIndex].id : `template-${Date.now()}`,
-    label,
-    form
+  try {
+    const data = await authApiRequest('/api/templates', {
+      method: 'POST',
+      body: {
+        label,
+        form
+      }
+    })
+    const template = normalizeShapeTemplate(data.template)
+    const existingIndex = shapeTemplates.value.findIndex((item) => item.id === template.id || item.label === template.label)
+    if (existingIndex >= 0) {
+      shapeTemplates.value.splice(existingIndex, 1, template)
+    } else {
+      shapeTemplates.value.push(template)
+    }
+    shapeSelection.value = template.id
+    ElMessage.success(`已保存模板：${label}`)
+  } catch (error: any) {
+    ElMessage.error(error?.message || '模板保存失败')
   }
-  if (existingIndex >= 0) {
-    shapeTemplates.value.splice(existingIndex, 1, template)
-  } else {
-    shapeTemplates.value.push(template)
-  }
-  writeShapeTemplates()
-  shapeSelection.value = template.id
-  ElMessage.success(`已保存模板：${label}`)
 }
 
 const readRememberedLogin = () => {
@@ -480,6 +485,7 @@ const login = async () => {
     currentUser.value = user
     writeSessionUser(user)
     saveRememberedLogin()
+    await loadShapeTemplates()
     loginMessage.value = ''
     if (!loginForm.remember) {
       loginForm.password = ''
@@ -882,8 +888,8 @@ const calcPaper = () => {
 
 onMounted(async () => {
   readRememberedLogin()
-  loadShapeTemplates()
   currentUser.value = await readSessionUser()
+  await loadShapeTemplates()
   authReady.value = true
   calcPaper()
   window.addEventListener('resize', calcPaper)

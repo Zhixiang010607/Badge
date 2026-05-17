@@ -30,6 +30,16 @@ export default {
         return jsonResponse(await createEmployee(request, env), 201);
       }
 
+      if (url.pathname === "/api/templates" && request.method === "GET") {
+        await requireUser(request, env);
+        return jsonResponse(await listShapeTemplates(env));
+      }
+
+      if (url.pathname === "/api/templates" && request.method === "POST") {
+        const user = await requireAdmin(request, env);
+        return jsonResponse(await saveShapeTemplate(request, env, user), 201);
+      }
+
       const employeeMatch = url.pathname.match(/^\/api\/employees\/([^/]+)$/);
       if (employeeMatch && request.method === "PUT") {
         await requireAdmin(request, env);
@@ -39,6 +49,13 @@ export default {
       if (employeeMatch && request.method === "DELETE") {
         await requireAdmin(request, env);
         await env.DB.prepare("DELETE FROM employees WHERE id = ?").bind(employeeMatch[1]).run();
+        return jsonResponse({ ok: true });
+      }
+
+      const templateMatch = url.pathname.match(/^\/api\/templates\/([^/]+)$/);
+      if (templateMatch && request.method === "DELETE") {
+        await requireAdmin(request, env);
+        await env.DB.prepare("DELETE FROM shape_templates WHERE id = ?").bind(templateMatch[1]).run();
         return jsonResponse({ ok: true });
       }
 
@@ -133,6 +150,71 @@ async function updateEmployee(id, request, env) {
     .bind(id)
     .first();
   return { employee };
+}
+
+async function listShapeTemplates(env) {
+  const { results } = await env.DB.prepare(
+    "SELECT id, label, shape, template_json, created_by, created_at, updated_at FROM shape_templates ORDER BY label ASC",
+  ).all();
+  const templates = (results || []).map((row) => ({
+    id: row.id,
+    label: row.label,
+    shape: row.shape,
+    form: JSON.parse(row.template_json),
+    createdBy: row.created_by,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }));
+  return { templates };
+}
+
+async function saveShapeTemplate(request, env, user) {
+  const body = await readJson(request);
+  const label = String(body.label || "").trim();
+  const form = body.form;
+  validateShapeTemplateInput(label, form);
+
+  const now = new Date().toISOString();
+  const existing = await env.DB.prepare("SELECT id, created_at FROM shape_templates WHERE label = ?").bind(label).first();
+  const id = existing?.id || crypto.randomUUID();
+  await env.DB.prepare(
+    `INSERT INTO shape_templates (id, label, shape, template_json, created_by, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(label) DO UPDATE SET
+       shape = excluded.shape,
+       template_json = excluded.template_json,
+       created_by = excluded.created_by,
+       updated_at = excluded.updated_at`,
+  )
+    .bind(id, label, form.shape, JSON.stringify(form), user.username, existing?.created_at || now, now)
+    .run();
+
+  const template = await env.DB.prepare(
+    "SELECT id, label, shape, template_json, created_by, created_at, updated_at FROM shape_templates WHERE label = ?",
+  )
+    .bind(label)
+    .first();
+  return {
+    template: {
+      id: template.id,
+      label: template.label,
+      shape: template.shape,
+      form: JSON.parse(template.template_json),
+      createdBy: template.created_by,
+      createdAt: template.created_at,
+      updatedAt: template.updated_at,
+    },
+  };
+}
+
+function validateShapeTemplateInput(label, form) {
+  const allowedShapes = new Set(["circle", "rectangle", "ellipse", "polygon", "redHeart", "yellowHeart"]);
+  if (!label) throw httpError("模板名称不能为空", 400);
+  if (!form || typeof form !== "object") throw httpError("模板内容不能为空", 400);
+  if (!allowedShapes.has(form.shape)) throw httpError("模板形状不正确", 400);
+  ["row", "col", "padding", "color", "width", "height"].forEach((key) => {
+    if (form[key] === undefined || form[key] === null || form[key] === "") throw httpError("模板参数不完整", 400);
+  });
 }
 
 async function requireAdmin(request, env) {
