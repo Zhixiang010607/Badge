@@ -776,6 +776,7 @@ const dialogVisible = ref<boolean>(false)
 const rowIndex = ref(0)
 const colIndex = ref(0)
 const editable = ref('')
+const actionHover = ref('')
 const addImage = (i: number, j: number) => {
   editable.value = ''
   rowIndex.value = i
@@ -1110,6 +1111,10 @@ const isEditableBadge = (i: number, j: number) => {
   return editable.value === `${i},${j}`
 }
 
+const isActionHover = (i: number, j: number) => {
+  return actionHover.value === `${i},${j}`
+}
+
 const operationCellStyle = computed(() => {
   const shapeLayout = getShapeLayout(submitForm.value)
   return {
@@ -1121,7 +1126,8 @@ const operationCellStyle = computed(() => {
 const operationButtonScaleStyle = computed(() => {
   return {
     '--operation-scale': btnScale.value,
-    '--operation-offset': `${96 * btnScale.value}px`
+    '--operation-offset': `${96 * btnScale.value}px`,
+    '--column-operation-offset': `${cmTo600Dpi(1)}px`
   }
 })
 </script>
@@ -1215,12 +1221,18 @@ const operationButtonScaleStyle = computed(() => {
             >
               <img v-if="image" class="image" :src="image" alt="" @click="addImage(i, j)"/>
             </div>
-            <div class="badge-actions" :class="{'is-open': isEditableBadge(i, j)}" :style="badgeActionStyle">
+            <div
+              class="badge-actions"
+              :class="{'is-open': isEditableBadge(i, j)}"
+              :style="badgeActionStyle"
+              @mouseenter="actionHover = `${i},${j}`"
+              @mouseleave="actionHover = ''"
+            >
               <template v-if="!image">
                 <el-tooltip content="添加图片" placement="top">
                   <el-button :icon="Plus" circle @click="addImage(i, j)"/>
                 </el-tooltip>
-                <el-tooltip class="paste-action" :content="copyItem ? '粘贴已复制图片' : '请先复制图片'" placement="top">
+                <el-tooltip v-if="isActionHover(i, j)" :content="copyItem ? '粘贴已复制图片' : '请先复制图片'" placement="top">
                   <el-button :icon="List" circle :disabled="!copyItem" @click="pasteImage(i, j)"/>
                 </el-tooltip>
               </template>
@@ -1539,7 +1551,7 @@ const operationButtonScaleStyle = computed(() => {
 
       .column-actions {
         position: absolute;
-        top: calc(var(--operation-offset) * -1);
+        top: calc(var(--column-operation-offset) * -1);
         left: 0;
         width: 100%;
         display: flex;
@@ -1695,13 +1707,6 @@ const operationButtonScaleStyle = computed(() => {
               box-shadow: 0 2px 7px rgba(28, 39, 35, 0.18);
             }
 
-            :deep(.paste-action) {
-              display: none;
-            }
-
-            &:hover :deep(.paste-action) {
-              display: inline-flex;
-            }
           }
         }
       }
