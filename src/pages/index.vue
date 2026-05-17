@@ -1173,7 +1173,7 @@ const operationButtonScaleStyle = computed(() => {
           >
             <div class="operation-buttons operation-buttons--column" :style="operationButtonScaleStyle">
               <el-tooltip content="把已复制图片粘贴到这一列" placement="top">
-                <el-button :icon="CopyDocument" circle @click="fillColumnFromCopiedImage(j)"/>
+                <el-button :icon="List" circle @click="fillColumnFromCopiedImage(j)"/>
               </el-tooltip>
               <el-tooltip content="清空这一列" placement="top">
                 <el-button :icon="Delete" circle @click="clearColumn(j)"/>
@@ -1183,7 +1183,7 @@ const operationButtonScaleStyle = computed(() => {
         </div>
         <div class="corner-actions operation-buttons" :style="operationButtonScaleStyle">
           <el-tooltip content="把已复制图片粘贴到全部位置" placement="top">
-            <el-button :icon="CopyDocument" circle @click="fillAllFromCopiedImage"/>
+            <el-button :icon="List" circle @click="fillAllFromCopiedImage"/>
           </el-tooltip>
           <el-tooltip content="全部清空" placement="top">
             <el-button :icon="Delete" circle @click="clearAllImages"/>
@@ -1192,7 +1192,7 @@ const operationButtonScaleStyle = computed(() => {
         <div class="row" v-for="(row, i) of images" :key="i">
           <div class="row-actions operation-buttons" :style="operationButtonScaleStyle">
             <el-tooltip content="把已复制图片粘贴到这一行" placement="left">
-              <el-button :icon="CopyDocument" circle @click="fillRowFromCopiedImage(i)"/>
+              <el-button :icon="List" circle @click="fillRowFromCopiedImage(i)"/>
             </el-tooltip>
             <el-tooltip content="清空这一行" placement="left">
               <el-button :icon="Delete" circle @click="clearRow(i)"/>
