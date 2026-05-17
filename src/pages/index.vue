@@ -3,7 +3,6 @@ import type {FormInstance, FormRules} from 'element-plus'
 import {Cropper, CropperResult} from 'vue-advanced-cropper'
 import 'vue-advanced-cropper/dist/style.css'
 import {CopyDocument, Crop, Edit, List, Plus} from '@element-plus/icons-vue'
-import html2canvas from 'html2canvas'
 import {computed} from 'vue'
 
 type ShapeType = 'circle' | 'rectangle' | 'ellipse' | 'polygon' | 'redHeart' | 'yellowHeart'
@@ -749,6 +748,172 @@ const confirmCrop = () => {
   images.value[rowIndex.value][colIndex.value] = canvas?.toDataURL() || ''
   dialogVisible.value = false
 }
+
+const drawCoverImage = (ctx: CanvasRenderingContext2D, image: HTMLImageElement, x: number, y: number, width: number, height: number) => {
+  const sourceRatio = image.naturalWidth / image.naturalHeight
+  const targetRatio = width / height
+  let sx = 0
+  let sy = 0
+  let sw = image.naturalWidth
+  let sh = image.naturalHeight
+  if (sourceRatio > targetRatio) {
+    sw = image.naturalHeight * targetRatio
+    sx = (image.naturalWidth - sw) / 2
+  } else {
+    sh = image.naturalWidth / targetRatio
+    sy = (image.naturalHeight - sh) / 2
+  }
+  ctx.drawImage(image, sx, sy, sw, sh, x, y, width, height)
+}
+
+const getNormalizedPolygonPoints = (sides: number) => {
+  const points = getRegularPolygonPoints(sides)
+  const xs = points.map(point => point.x)
+  const ys = points.map(point => point.y)
+  const minX = Math.min(...xs)
+  const minY = Math.min(...ys)
+  const width = Math.max(...xs) - minX
+  const height = Math.max(...ys) - minY
+  return points.map(point => ({
+    x: (point.x - minX) / width,
+    y: (point.y - minY) / height
+  }))
+}
+
+const makeShapePath = (ctx: CanvasRenderingContext2D, form: RuleForm, x: number, y: number, width: number, height: number) => {
+  ctx.beginPath()
+  if (form.shape === 'circle' || form.shape === 'ellipse') {
+    ctx.ellipse(x + width / 2, y + height / 2, width / 2, height / 2, 0, 0, Math.PI * 2)
+    return
+  }
+  if (form.shape === 'polygon') {
+    const points = getNormalizedPolygonPoints(form.polygonSides)
+    points.forEach((point, index) => {
+      const px = x + point.x * width
+      const py = y + point.y * height
+      if (index === 0) {
+        ctx.moveTo(px, py)
+      } else {
+        ctx.lineTo(px, py)
+      }
+    })
+    ctx.closePath()
+    return
+  }
+  ctx.rect(x, y, width, height)
+}
+
+const drawMaskedRect = async (
+  ctx: CanvasRenderingContext2D,
+  maskSrc: string,
+  drawContent: (maskCtx: CanvasRenderingContext2D) => void,
+  x: number,
+  y: number,
+  width: number,
+  height: number
+) => {
+  const mask = await loadImg(maskSrc)
+  const temp = document.createElement('canvas')
+  temp.width = Math.max(1, Math.round(width))
+  temp.height = Math.max(1, Math.round(height))
+  const tempCtx = temp.getContext('2d')
+  if (!tempCtx) {
+    return
+  }
+  drawContent(tempCtx)
+  tempCtx.globalCompositeOperation = 'destination-in'
+  tempCtx.drawImage(mask, 0, 0, temp.width, temp.height)
+  tempCtx.globalCompositeOperation = 'source-over'
+  ctx.drawImage(temp, x, y, width, height)
+}
+
+const getHeartMaskSrc = (shape: ShapeType) => {
+  return shape === 'redHeart' ? '/red-heart-mask.png' : '/yellow-heart-mask.png'
+}
+
+const drawShapeFill = async (
+  ctx: CanvasRenderingContext2D,
+  form: RuleForm,
+  color: string,
+  x: number,
+  y: number,
+  width: number,
+  height: number
+) => {
+  if (form.shape === 'redHeart' || form.shape === 'yellowHeart') {
+    await drawMaskedRect(ctx, getHeartMaskSrc(form.shape), (maskCtx) => {
+      maskCtx.fillStyle = color
+      maskCtx.fillRect(0, 0, width, height)
+    }, x, y, width, height)
+    return
+  }
+  ctx.save()
+  makeShapePath(ctx, form, x, y, width, height)
+  ctx.fillStyle = color
+  ctx.fill()
+  ctx.restore()
+}
+
+const drawShapeImage = async (
+  ctx: CanvasRenderingContext2D,
+  form: RuleForm,
+  src: string,
+  x: number,
+  y: number,
+  width: number,
+  height: number
+) => {
+  const image = await loadImg(src)
+  if (form.shape === 'redHeart' || form.shape === 'yellowHeart') {
+    await drawMaskedRect(ctx, getHeartMaskSrc(form.shape), (maskCtx) => {
+      drawCoverImage(maskCtx, image, 0, 0, width, height)
+    }, x, y, width, height)
+    return
+  }
+  ctx.save()
+  makeShapePath(ctx, form, x, y, width, height)
+  ctx.clip()
+  drawCoverImage(ctx, image, x, y, width, height)
+  ctx.restore()
+}
+
+const renderExportCanvas = async () => {
+  const {row, col, color, width, height} = submitForm.value
+  const dpiScale = exportForm.dpi / 600
+  const shapeLayout = getShapeLayout(submitForm.value)
+  const outerWidth = cmTo600Dpi(shapeLayout.outer.width)
+  const outerHeight = cmTo600Dpi(shapeLayout.outer.height)
+  const innerWidth = cmTo600Dpi(shapeLayout.inner.width)
+  const innerHeight = cmTo600Dpi(shapeLayout.inner.height)
+  const offsetX = cmTo600Dpi(shapeLayout.offsetX)
+  const offsetY = cmTo600Dpi(shapeLayout.offsetY)
+  const gapX = (width - col * outerWidth) / (col + 1)
+  const gapY = (height - row * outerHeight) / (row + 1)
+  const canvas = document.createElement('canvas')
+  canvas.width = Math.round(width * dpiScale)
+  canvas.height = Math.round(height * dpiScale)
+  const ctx = canvas.getContext('2d')
+  if (!ctx) {
+    throw new Error('无法创建导出画布')
+  }
+  ctx.scale(dpiScale, dpiScale)
+  ctx.fillStyle = '#fff'
+  ctx.fillRect(0, 0, width, height)
+  for (let i = 0; i < row; i++) {
+    for (let j = 0; j < col; j++) {
+      const image = images.value[i]?.[j]
+      if (!image) {
+        continue
+      }
+      const outerX = gapX * (j + 1) + outerWidth * j
+      const outerY = gapY * (i + 1) + outerHeight * i
+      await drawShapeFill(ctx, submitForm.value, color, outerX, outerY, outerWidth, outerHeight)
+      await drawShapeImage(ctx, submitForm.value, image, outerX + offsetX, outerY + offsetY, innerWidth, innerHeight)
+    }
+  }
+  return canvas
+}
+
 const loading = ref(false)
 const output = () => {
   if (loading.value) {
@@ -757,16 +922,7 @@ const output = () => {
   loading.value = true
   nextTick(async () => {
     try {
-      if (!preview.value) {
-        loading.value = false
-        return
-      }
-      const canvas = await html2canvas(preview.value, {
-        scale: exportForm.dpi / 600,
-        onclone: (_, el: HTMLElement) => {
-          el.style.transform = ''
-        }
-      })
+      const canvas = await renderExportCanvas()
       const img = await loadImg(canvas.toDataURL(`image/${exportForm.fileType}`, exportForm.quality))
       const a = document.createElement('a')
       a.href = img.src
