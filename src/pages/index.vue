@@ -1502,7 +1502,7 @@ const operationButtonScaleStyle = computed(() => {
           </el-form-item>
           <el-form-item label="预设置模板">
             <div class="shape-template-row">
-              <el-select v-model="presetSelection" placeholder="选择预设置模板" @change="handlePresetSelection">
+              <el-select v-model="presetSelection" placeholder="选择预设置模板" :disabled="!usePresetTemplate" @change="handlePresetSelection">
                 <el-option v-for="item in presetTemplateOptions" :key="item.value" :label="item.label" :value="item.value"/>
               </el-select>
               <el-checkbox v-model="usePresetTemplate" @change="handlePresetToggle">使用模板</el-checkbox>
