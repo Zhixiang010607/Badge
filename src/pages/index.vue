@@ -1115,11 +1115,10 @@ const isActionHover = (i: number, j: number) => {
   return actionHover.value === `${i},${j}`
 }
 
-const operationCellStyle = computed(() => {
+const operationColumnCellStyle = computed(() => {
   const shapeLayout = getShapeLayout(submitForm.value)
   return {
-    width: `${cmTo600Dpi(shapeLayout.outer.width)}px`,
-    height: `${cmTo600Dpi(shapeLayout.outer.height)}px`
+    width: `${cmTo600Dpi(shapeLayout.outer.width)}px`
   }
 })
 
@@ -1170,7 +1169,7 @@ const operationButtonScaleStyle = computed(() => {
             class="column-action-cell"
             v-for="(_, j) in (images[0] || [])"
             :key="`column-action-${j}`"
-            :style="operationCellStyle"
+            :style="operationColumnCellStyle"
           >
             <div class="operation-buttons operation-buttons--column" :style="operationButtonScaleStyle">
               <el-tooltip content="把已复制图片粘贴到这一列" placement="top">
