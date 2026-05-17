@@ -70,6 +70,7 @@ interface EmployeeAccount {
 
 const AUTH_STORAGE_KEY = 'badge-print-employees-v1'
 const AUTH_SESSION_KEY = 'badge-print-session-v1'
+const AUTH_REMEMBER_KEY = 'badge-print-remember-login-v1'
 const ADMIN_ACCOUNT: AuthUser = {
   username: 'yanyujie123',
   password: '123456789',
@@ -202,7 +203,8 @@ const submitForm = ref<RuleForm>({...ruleForm})
 const currentUser = ref<AuthUser | null>(null)
 const loginForm = reactive({
   username: '',
-  password: ''
+  password: '',
+  remember: false
 })
 const loginMessage = ref('')
 const adminVisible = ref(false)
@@ -240,6 +242,31 @@ const readEmployeeAccounts = (): EmployeeAccount[] => {
 const saveEmployeeAccounts = (accounts: EmployeeAccount[]) => {
   window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(accounts))
   employeeAccounts.value = accounts
+}
+
+const readRememberedLogin = () => {
+  try {
+    const remembered = JSON.parse(window.localStorage.getItem(AUTH_REMEMBER_KEY) || 'null')
+    if (!remembered || typeof remembered.username !== 'string' || typeof remembered.password !== 'string') {
+      return
+    }
+    loginForm.username = remembered.username
+    loginForm.password = remembered.password
+    loginForm.remember = true
+  } catch {
+    window.localStorage.removeItem(AUTH_REMEMBER_KEY)
+  }
+}
+
+const saveRememberedLogin = () => {
+  if (!loginForm.remember) {
+    window.localStorage.removeItem(AUTH_REMEMBER_KEY)
+    return
+  }
+  window.localStorage.setItem(AUTH_REMEMBER_KEY, JSON.stringify({
+    username: loginForm.username.trim(),
+    password: loginForm.password
+  }))
 }
 
 const readSessionUser = (): AuthUser | null => {
@@ -314,8 +341,11 @@ const login = () => {
   }
   currentUser.value = user
   writeSessionUser(user)
+  saveRememberedLogin()
   loginMessage.value = ''
-  loginForm.password = ''
+  if (!loginForm.remember) {
+    loginForm.password = ''
+  }
   nextTick(calcPaper)
 }
 
@@ -666,6 +696,7 @@ const calcPaper = () => {
 
 onMounted(() => {
   employeeAccounts.value = readEmployeeAccounts()
+  readRememberedLogin()
   currentUser.value = readSessionUser()
   calcPaper()
   window.addEventListener('resize', calcPaper)
@@ -798,6 +829,9 @@ const realStyle = computed(() => {
         <label>
           密码
           <el-input v-model="loginForm.password" type="password" autocomplete="current-password" show-password/>
+        </label>
+        <label class="remember-row">
+          <el-checkbox v-model="loginForm.remember">记住密码</el-checkbox>
         </label>
         <el-button class="auth-submit" type="primary" native-type="submit">登录使用</el-button>
         <p class="auth-message">{{ loginMessage }}</p>
@@ -1056,6 +1090,13 @@ const realStyle = computed(() => {
     color: #303133;
     font-size: 14px;
     font-weight: 700;
+  }
+
+  .remember-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: -4px;
   }
 }
 
