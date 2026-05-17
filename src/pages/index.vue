@@ -1231,7 +1231,7 @@ const operationButtonScaleStyle = computed(() => {
                   <el-button class="real" :style="realStyle" :icon="CopyDocument" circle @click="copyImage(i, j)"/>
                 </el-tooltip>
               </div>
-              <div v-if="!image && isEditableBadge(i, j)" class="inner-content">
+              <div v-if="!image" class="inner-content">
                 <div class="fake" :style="fakeStyle"></div>
                 <el-tooltip :content="copyItem ? '粘贴已复制图片' : '请先复制图片'" placement="top">
                   <el-button class="real" :style="realStyle" :icon="List" circle :disabled="!copyItem" @click="pasteImage(i, j)"/>
