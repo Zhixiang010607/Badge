@@ -1534,7 +1534,7 @@ const operationButtonScaleStyle = computed(() => {
       20px 20px,
       auto;
     height: 100%;
-    overflow: visible;
+    overflow: hidden;
     box-shadow: 0 18px 42px rgba(35, 42, 38, 0.13);
 
     .preview {
@@ -1550,7 +1550,7 @@ const operationButtonScaleStyle = computed(() => {
 
       .column-actions {
         position: absolute;
-        top: -72px;
+        top: -96px;
         left: 0;
         width: 100%;
         display: flex;
@@ -1568,8 +1568,8 @@ const operationButtonScaleStyle = computed(() => {
 
       .corner-actions {
         position: absolute;
-        top: -72px;
-        left: -96px;
+        top: -96px;
+        left: -144px;
         z-index: 30;
         pointer-events: auto;
         transform: scale(var(--operation-scale));
@@ -1581,7 +1581,7 @@ const operationButtonScaleStyle = computed(() => {
         align-items: center;
         justify-content: center;
         gap: 6px;
-        padding: 4px;
+        padding: 3px;
         border-radius: 999px;
         background: rgba(255, 255, 255, 0.96);
         border: 1px solid rgba(42, 59, 53, 0.12);
@@ -1590,9 +1590,9 @@ const operationButtonScaleStyle = computed(() => {
         transform-origin: center;
 
         :deep(.el-button) {
-          width: 28px;
-          height: 28px;
-          min-height: 28px;
+          width: 24px;
+          height: 24px;
+          min-height: 24px;
           margin: 0;
           color: #32413b;
           background: #fff;
@@ -1614,7 +1614,7 @@ const operationButtonScaleStyle = computed(() => {
 
         .row-actions {
           position: absolute;
-          left: -96px;
+          left: -144px;
           top: 50%;
           z-index: 30;
           pointer-events: auto;
@@ -1622,9 +1622,9 @@ const operationButtonScaleStyle = computed(() => {
           transform-origin: center left;
 
           :deep(.el-button) {
-            width: 28px;
-            height: 28px;
-            min-height: 28px;
+            width: 24px;
+            height: 24px;
+            min-height: 24px;
             margin: 0;
             color: #32413b;
             background: #fff;
