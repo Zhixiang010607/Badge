@@ -235,7 +235,7 @@ const shapeTemplates = ref<ShapeTemplate[]>([])
 const shapeSelection = ref<string>(ruleForm.shape)
 const presetSelection = ref<string>('')
 const usePresetTemplate = ref(true)
-const isPresetActive = computed(() => usePresetTemplate.value && Boolean(presetSelection.value))
+const isPresetActive = computed(() => usePresetTemplate.value)
 
 const cloneRuleForm = (form: RuleForm): RuleForm => JSON.parse(JSON.stringify(form))
 
@@ -1505,7 +1505,7 @@ const operationButtonScaleStyle = computed(() => {
               <el-select v-model="shapeSelection" :disabled="isPresetActive" @change="handleShapeSelection">
                 <el-option v-for="item in shapeSelectOptions" :key="item.value" :label="item.label" :value="item.value"/>
               </el-select>
-              <el-button v-if="currentUser.role === 'admin'" @click="saveCurrentShapeTemplate">保存当前模板</el-button>
+              <el-button v-if="currentUser.role === 'admin'" :disabled="isPresetActive" @click="saveCurrentShapeTemplate">保存当前模板</el-button>
             </div>
           </el-form-item>
           <el-form-item label="行数" prop="row">
