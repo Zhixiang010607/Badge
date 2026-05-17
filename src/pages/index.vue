@@ -1101,7 +1101,7 @@ const goGitHub = () => {
 }
 
 const fakeStyle = computed(() => {
-  return `width: ${btnScale.value * 20}px;`
+  return `width: ${btnScale.value * 20}px; height: ${btnScale.value * 20}px;`
 })
 
 const realStyle = computed(() => {
