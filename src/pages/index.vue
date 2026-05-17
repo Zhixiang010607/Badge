@@ -778,7 +778,6 @@ const dialogVisible = ref<boolean>(false)
 const rowIndex = ref(0)
 const colIndex = ref(0)
 const editable = ref('')
-const actionHover = ref('')
 const addImage = (i: number, j: number) => {
   editable.value = ''
   rowIndex.value = i
@@ -1014,11 +1013,6 @@ const copyImage = (i: number, j: number) => {
   copyTemp.value = JSON.parse(JSON.stringify(tempImages.value[i][j]))
 }
 
-const pasteImage = (i: number, j: number) => {
-  images.value[i][j] = JSON.parse(JSON.stringify(copyItem.value))
-  tempImages.value[i][j] = JSON.parse(JSON.stringify(copyTemp.value))
-}
-
 const removeImage = (i: number, j: number) => {
   images.value[i][j] = ''
   tempImages.value[i][j] = ''
@@ -1111,10 +1105,6 @@ const badgeActionStyle = computed(() => {
 
 const isEditableBadge = (i: number, j: number) => {
   return editable.value === `${i},${j}`
-}
-
-const isActionHover = (i: number, j: number) => {
-  return actionHover.value === `${i},${j}`
 }
 
 const operationColumnCellStyle = computed(() => {
@@ -1226,15 +1216,10 @@ const operationButtonScaleStyle = computed(() => {
               class="badge-actions"
               :class="{'is-open': isEditableBadge(i, j)}"
               :style="badgeActionStyle"
-              @mouseenter="actionHover = `${i},${j}`"
-              @mouseleave="actionHover = ''"
             >
               <template v-if="!image">
                 <el-tooltip content="添加图片" placement="top">
                   <el-button :icon="Plus" circle @click="addImage(i, j)"/>
-                </el-tooltip>
-                <el-tooltip v-if="isActionHover(i, j)" :content="copyItem ? '粘贴已复制图片' : '请先复制图片'" placement="top">
-                  <el-button :icon="List" circle :disabled="!copyItem" @click="pasteImage(i, j)"/>
                 </el-tooltip>
               </template>
               <template v-else-if="isEditableBadge(i, j)">
