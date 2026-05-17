@@ -687,8 +687,12 @@ const validateForm = () => {
         return
       }
 
-      images.value = buildImageGrid(row, col, images.value)
-      tempImages.value = buildImageGrid(row, col, tempImages.value)
+      const shouldPreserveImages =
+        submitForm.value.shape === ruleForm.shape &&
+        submitForm.value.row === row &&
+        submitForm.value.col === col
+      images.value = buildImageGrid(row, col, shouldPreserveImages ? images.value : [])
+      tempImages.value = buildImageGrid(row, col, shouldPreserveImages ? tempImages.value : [])
 
       submitForm.value = {...ruleForm}
       calcPaper()
