@@ -1675,14 +1675,23 @@ const operationButtonScaleStyle = computed(() => {
             left: 50%;
             z-index: 25;
             display: grid;
-            grid-template-columns: repeat(2, max-content);
-            grid-auto-rows: max-content;
+            grid-template-columns: repeat(2, 20px);
+            grid-auto-rows: 20px;
             align-items: center;
             justify-content: center;
+            justify-items: center;
             gap: 4px;
             transform: translate(-50%, -50%) scale(var(--badge-action-scale));
             pointer-events: auto;
             transform-origin: center;
+
+            :deep(.el-tooltip__trigger) {
+              width: 20px;
+              height: 20px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+            }
 
             :deep(.el-button) {
               width: 20px;
@@ -1694,6 +1703,10 @@ const operationButtonScaleStyle = computed(() => {
               border-color: rgba(70, 82, 77, 0.14);
               box-shadow: 0 4px 12px rgba(28, 39, 35, 0.14);
               transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+            }
+
+            :deep(.el-button + .el-button) {
+              margin-left: 0;
             }
 
             :deep(.el-button:hover) {
