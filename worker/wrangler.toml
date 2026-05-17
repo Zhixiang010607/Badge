@@ -1,0 +1,14 @@
+name = "badge-print-auth"
+main = "index.js"
+compatibility_date = "2026-05-17"
+keep_vars = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "badge-print-auth"
+database_id = "8d552e74-3eb9-4ea9-bd5c-9fc2203a9662"
+
+# Set these as Worker secrets before deployment:
+# ADMIN_USERNAME
+# ADMIN_PASSWORD
+# SESSION_SECRET

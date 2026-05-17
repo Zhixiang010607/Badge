@@ -1,0 +1,14 @@
+name = "badge-print-auth"
+main = "index.js"
+compatibility_date = "2026-05-17"
+keep_vars = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "badge-print-auth"
+database_id = "replace-with-your-d1-database-id"
+
+# Set these as Worker secrets before deployment:
+# wrangler secret put ADMIN_USERNAME
+# wrangler secret put ADMIN_PASSWORD
+# wrangler secret put SESSION_SECRET

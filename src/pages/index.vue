@@ -56,25 +56,30 @@ interface ShapeLayout {
 interface AuthUser {
   id?: string
   username: string
-  password?: string
   role: 'admin' | 'employee'
+  token: string
 }
 
 interface EmployeeAccount {
   id: string
   username: string
-  password: string
+  password?: string
   createdAt: string
 }
 
-const AUTH_STORAGE_KEY = 'badge-print-employees-v1'
 const AUTH_SESSION_KEY = 'badge-print-session-v1'
 const AUTH_REMEMBER_KEY = 'badge-print-remember-login-v1'
-const ADMIN_ACCOUNT: AuthUser = {
-  username: 'yanyujie123',
-  password: '123456789',
-  role: 'admin'
+const ADMIN_USERNAME = 'yanyujie123'
+const windowWithAuthConfig = window as Window & {
+  BADGE_AUTH_API_URL?: string
+  YYJ_AUTH_API_URL?: string
 }
+const AUTH_API_BASE_URL = (
+  windowWithAuthConfig.BADGE_AUTH_API_URL ||
+  windowWithAuthConfig.YYJ_AUTH_API_URL ||
+  document.querySelector<HTMLMetaElement>('meta[name="auth-api-base"]')?.content ||
+  ''
+).replace(/\/$/, '')
 
 const paperSize: Map<string, PaperSize> = new Map([
   ['A3', {
@@ -200,6 +205,8 @@ const btnScale = ref(1)
 
 const submitForm = ref<RuleForm>({...ruleForm})
 const currentUser = ref<AuthUser | null>(null)
+const authReady = ref(false)
+const loginLoading = ref(false)
 const loginForm = reactive({
   username: '',
   password: '',
@@ -213,35 +220,6 @@ const employeeForm = reactive({
   password: ''
 })
 const employeeAccounts = ref<EmployeeAccount[]>([])
-
-const createId = (prefix: string) => {
-  return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
-}
-
-const readEmployeeAccounts = (): EmployeeAccount[] => {
-  try {
-    const parsed = JSON.parse(window.localStorage.getItem(AUTH_STORAGE_KEY) || '[]')
-    if (!Array.isArray(parsed)) {
-      return []
-    }
-    return parsed
-      .filter((account) => account && typeof account.username === 'string' && typeof account.password === 'string')
-      .map((account) => ({
-        id: account.id || createId('employee'),
-        username: account.username.trim(),
-        password: account.password,
-        createdAt: account.createdAt || new Date().toISOString()
-      }))
-      .filter((account) => account.username)
-  } catch {
-    return []
-  }
-}
-
-const saveEmployeeAccounts = (accounts: EmployeeAccount[]) => {
-  window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(accounts))
-  employeeAccounts.value = accounts
-}
 
 const readRememberedLogin = () => {
   try {
@@ -268,84 +246,125 @@ const saveRememberedLogin = () => {
   }))
 }
 
-const readSessionUser = (): AuthUser | null => {
+const authApiUrl = (path: string) => {
+  return `${AUTH_API_BASE_URL}${path}`
+}
+
+const readStoredToken = () => {
   try {
     const session = JSON.parse(window.sessionStorage.getItem(AUTH_SESSION_KEY) || 'null')
-    if (!session) {
+    return typeof session?.token === 'string' ? session.token : ''
+  } catch {
+    return ''
+  }
+}
+
+const authApiRequest = async (
+  path: string,
+  options: {
+    auth?: boolean
+    token?: string
+    method?: string
+    headers?: Record<string, string>
+    body?: unknown
+  } = {}
+) => {
+  const headers: Record<string, string> = {
+    Accept: 'application/json',
+    ...(options.headers || {})
+  }
+  const token = options.token || (options.auth === false ? '' : currentUser.value?.token || readStoredToken())
+  if (token) {
+    headers.Authorization = `Bearer ${token}`
+  }
+  const requestOptions: RequestInit = {
+    method: options.method || 'GET',
+    headers
+  }
+  if (options.body !== undefined) {
+    headers['Content-Type'] = 'application/json'
+    requestOptions.body = JSON.stringify(options.body)
+  }
+
+  let response: Response
+  try {
+    response = await fetch(authApiUrl(path), requestOptions)
+  } catch {
+    throw new Error('云端账号 API 连接失败，请检查 Worker 地址是否配置正确')
+  }
+
+  const text = await response.text()
+  let data: any = {}
+  try {
+    data = text ? JSON.parse(text) : {}
+  } catch {
+    throw new Error('云端账号 API 返回异常，请检查 Worker 是否部署成功')
+  }
+  if (!response.ok) {
+    throw new Error(data.error || '云端账号请求失败')
+  }
+  return data
+}
+
+const readSessionUser = async (): Promise<AuthUser | null> => {
+  try {
+    const token = readStoredToken()
+    if (!token) {
       return null
     }
-    if (session.role === 'admin' && session.username === ADMIN_ACCOUNT.username) {
-      return {
-        role: 'admin',
-        username: ADMIN_ACCOUNT.username
-      }
-    }
-    if (session.role === 'employee') {
-      const account = readEmployeeAccounts().find((item) => item.id === session.id && item.password === session.password)
-      if (account) {
-        return {
-          role: 'employee',
-          id: account.id,
-          username: account.username,
-          password: account.password
-        }
-      }
+    const data = await authApiRequest('/api/auth/me', {
+      auth: false,
+      token
+    })
+    return {
+      ...data.user,
+      token
     }
   } catch {
     window.sessionStorage.removeItem(AUTH_SESSION_KEY)
+    return null
   }
-  window.sessionStorage.removeItem(AUTH_SESSION_KEY)
-  return null
 }
 
 const writeSessionUser = (user: AuthUser) => {
-  const payload = user.role === 'admin'
-    ? {
-        role: 'admin',
-        username: user.username
-      }
-    : {
-        role: 'employee',
-        id: user.id,
-        username: user.username,
-        password: user.password
-      }
-  window.sessionStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(payload))
+  window.sessionStorage.setItem(AUTH_SESSION_KEY, JSON.stringify({
+    token: user.token
+  }))
 }
 
-const authenticate = (username: string, password: string): AuthUser | null => {
-  if (username === ADMIN_ACCOUNT.username && password === ADMIN_ACCOUNT.password) {
-    return {
-      role: 'admin',
-      username: ADMIN_ACCOUNT.username
+const authenticate = async (username: string, password: string): Promise<AuthUser> => {
+  const data = await authApiRequest('/api/auth/login', {
+    auth: false,
+    method: 'POST',
+    body: {
+      username,
+      password
     }
-  }
-  const employee = readEmployeeAccounts().find((account) => account.username === username && account.password === password)
-  if (!employee) {
-    return null
-  }
+  })
   return {
-    role: 'employee',
-    id: employee.id,
-    username: employee.username,
-    password: employee.password
+    ...data.user,
+    token: data.token
   }
 }
 
-const login = () => {
-  const user = authenticate(loginForm.username.trim(), loginForm.password)
-  if (!user) {
-    loginMessage.value = '账号或密码不正确'
-    return
+const login = async () => {
+  loginLoading.value = true
+  loginMessage.value = '正在登录...'
+  try {
+    const user = await authenticate(loginForm.username.trim(), loginForm.password)
+    currentUser.value = user
+    writeSessionUser(user)
+    saveRememberedLogin()
+    loginMessage.value = ''
+    if (!loginForm.remember) {
+      loginForm.password = ''
+    }
+    nextTick(calcPaper)
+  } catch (error: any) {
+    loginMessage.value = error?.message || '账号或密码不正确'
+  } finally {
+    loginLoading.value = false
   }
-  currentUser.value = user
-  writeSessionUser(user)
-  saveRememberedLogin()
-  loginMessage.value = ''
-  if (!loginForm.remember) {
-    loginForm.password = ''
-  }
-  nextTick(calcPaper)
 }
 
 const logout = () => {
@@ -355,8 +374,27 @@ const logout = () => {
   loginMessage.value = '已退出登录'
 }
 
-const refreshEmployeeAccounts = () => {
-  employeeAccounts.value = readEmployeeAccounts()
+const refreshEmployeeAccounts = async () => {
+  if (currentUser.value?.role !== 'admin') {
+    employeeAccounts.value = []
+    return
+  }
+  setEmployeeMessage('正在读取员工账号...')
+  try {
+    const data = await authApiRequest('/api/employees')
+    employeeAccounts.value = data.employees || []
+    setEmployeeMessage('')
+  } catch (error: any) {
+    employeeAccounts.value = []
+    setEmployeeMessage(error?.message || '无法读取员工账号')
+  }
+}
+
+const toggleAdminPanel = () => {
+  adminVisible.value = !adminVisible.value
+  if (adminVisible.value) {
+    refreshEmployeeAccounts()
+  }
 }
 
 const setEmployeeMessage = (message: string) => {
@@ -377,62 +415,88 @@ const generateEmployeeCredentials = () => {
   setEmployeeMessage('已随机生成账号和密码')
 }
 
-const createEmployeeAccount = () => {
+const createEmployeeAccount = async () => {
   const username = employeeForm.username.trim()
-  const password = employeeForm.password
+  const password = employeeForm.password.trim()
   if (!username || !password) {
     setEmployeeMessage('请输入员工账号和密码')
     return
   }
-  const accounts = readEmployeeAccounts()
-  if (username === ADMIN_ACCOUNT.username || accounts.some((account) => account.username === username)) {
-    setEmployeeMessage('账号已存在')
+  if (username === ADMIN_USERNAME) {
+    setEmployeeMessage('员工账号不能和管理员账号相同')
     return
   }
-  accounts.push({
-    id: createId('employee'),
-    username,
-    password,
-    createdAt: new Date().toISOString()
+  setEmployeeMessage('正在新增员工账号...')
+  try {
+    await authApiRequest('/api/employees', {
+      method: 'POST',
+      body: {
+        username,
+        password
+      }
+    })
+    employeeForm.username = ''
+    employeeForm.password = ''
+    await refreshEmployeeAccounts()
+    setEmployeeMessage('员工账号已新增')
+  } catch (error: any) {
+    setEmployeeMessage(error?.message || '新增员工账号失败')
+  }
+}
+
+const updateEmployeeAccount = async (account: EmployeeAccount, password = '') => {
+  const username = account.username.trim()
+  if (!username) {
+    setEmployeeMessage('员工账号不能为空')
+    return
+  }
+  if (username === ADMIN_USERNAME) {
+    setEmployeeMessage('员工账号不能和管理员账号相同')
+    return
+  }
+  setEmployeeMessage('正在保存员工账号...')
+  try {
+    await authApiRequest(`/api/employees/${encodeURIComponent(account.id)}`, {
+      method: 'PUT',
+      body: password.trim()
+        ? {
+            username,
+            password: password.trim()
+          }
+        : {
+            username
+          }
+    })
+    await refreshEmployeeAccounts()
+    setEmployeeMessage('员工账号已更新')
+  } catch (error: any) {
+    setEmployeeMessage(error?.message || '员工账号更新失败')
+  }
+}
+
+const updateEmployeeDraft = (id: string, key: 'username' | 'password', value: string) => {
+  employeeAccounts.value = employeeAccounts.value.map((account) => {
+    if (account.id !== id) {
+      return account
+    }
+    return {
+      ...account,
+      [key]: value
+    }
   })
-  saveEmployeeAccounts(accounts)
-  employeeForm.username = ''
-  employeeForm.password = ''
-  setEmployeeMessage('员工账号已新增')
 }
 
-const updateEmployeeAccount = (id: string, key: 'username' | 'password', value: string) => {
-  const accounts = readEmployeeAccounts()
-  const target = accounts.find((account) => account.id === id)
-  if (!target) {
-    return
+const removeEmployeeAccount = async (id: string) => {
+  setEmployeeMessage('正在删除员工账号...')
+  try {
+    await authApiRequest(`/api/employees/${encodeURIComponent(id)}`, {
+      method: 'DELETE'
+    })
+    await refreshEmployeeAccounts()
+    setEmployeeMessage('员工账号已删除')
+  } catch (error: any) {
+    setEmployeeMessage(error?.message || '员工账号删除失败')
   }
-  if (key === 'username') {
-    const username = value.trim()
-    if (!username) {
-      setEmployeeMessage('员工账号不能为空')
-      return
-    }
-    if (username === ADMIN_ACCOUNT.username || accounts.some((account) => account.id !== id && account.username === username)) {
-      setEmployeeMessage('账号已存在')
-      return
-    }
-    target.username = username
-  } else {
-    if (!value) {
-      setEmployeeMessage('员工密码不能为空')
-      return
-    }
-    target.password = value
-  }
-  saveEmployeeAccounts(accounts)
-  setEmployeeMessage('员工账号已更新')
-}
-
-const removeEmployeeAccount = (id: string) => {
-  const accounts = readEmployeeAccounts().filter((account) => account.id !== id)
-  saveEmployeeAccounts(accounts)
-  setEmployeeMessage('员工账号已删除')
 }
 
 const cmTo600Dpi = (cm: number) => {
@@ -693,10 +757,10 @@ const calcPaper = () => {
   })
 }
 
-onMounted(() => {
-  employeeAccounts.value = readEmployeeAccounts()
+onMounted(async () => {
   readRememberedLogin()
-  currentUser.value = readSessionUser()
+  currentUser.value = await readSessionUser()
+  authReady.value = true
   calcPaper()
   window.addEventListener('resize', calcPaper)
 })
@@ -972,7 +1036,14 @@ const realStyle = computed(() => {
 </script>
 
 <template>
-  <main v-if="!currentUser" class="auth-shell">
+  <main v-if="!authReady" class="auth-shell">
+    <section class="auth-card">
+      <p class="eyebrow">Loading</p>
+      <h1>正在验证登录状态</h1>
+      <p class="subcopy">请稍候。</p>
+    </section>
+  </main>
+  <main v-else-if="!currentUser" class="auth-shell">
     <section class="auth-card">
       <p class="eyebrow">Account Login</p>
       <h1>吧唧打印图排版工具</h1>
@@ -989,7 +1060,7 @@ const realStyle = computed(() => {
         <label class="remember-row">
           <el-checkbox v-model="loginForm.remember">记住密码</el-checkbox>
         </label>
-        <el-button class="auth-submit" type="primary" native-type="submit">登录使用</el-button>
+        <el-button class="auth-submit" type="primary" native-type="submit" :loading="loginLoading">登录使用</el-button>
         <p class="auth-message">{{ loginMessage }}</p>
       </el-form>
     </section>
@@ -1048,7 +1119,7 @@ const realStyle = computed(() => {
           <strong>{{ currentUser.username }}</strong>
         </div>
         <div class="account-actions">
-          <el-button v-if="currentUser.role === 'admin'" size="small" @click="adminVisible = !adminVisible; refreshEmployeeAccounts()">
+          <el-button v-if="currentUser.role === 'admin'" size="small" @click="toggleAdminPanel">
             员工账号管理
           </el-button>
           <el-button size="small" @click="logout">退出登录</el-button>
@@ -1080,12 +1151,13 @@ const realStyle = computed(() => {
             <span class="employee-index">{{ index + 1 }}</span>
             <label>
               账号
-              <el-input :model-value="account.username" @change="(value: string) => updateEmployeeAccount(account.id, 'username', value)"/>
+              <el-input :model-value="account.username" @input="(value: string) => updateEmployeeDraft(account.id, 'username', value)"/>
             </label>
             <label>
-              密码
-              <el-input :model-value="account.password" @change="(value: string) => updateEmployeeAccount(account.id, 'password', value)"/>
+              新密码
+              <el-input :model-value="account.password || ''" placeholder="留空则不修改密码" @input="(value: string) => updateEmployeeDraft(account.id, 'password', value)"/>
             </label>
+            <el-button @click="updateEmployeeAccount(account, account.password || '')">保存</el-button>
             <el-button type="danger" plain @click="removeEmployeeAccount(account.id)">删除</el-button>
           </div>
         </div>
