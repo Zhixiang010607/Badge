@@ -381,12 +381,11 @@ const handlePresetToggle = (checked: boolean | string | number) => {
     resetManualSettings()
     return
   }
-  if (!presetSelection.value) {
-    return
-  }
-  const option = presetTemplateOptions.value.find((item) => item.value === presetSelection.value)
+  const option =
+    presetTemplateOptions.value.find((item) => item.value === presetSelection.value) ||
+    presetTemplateOptions.value[0]
   if (option?.template) {
-    applyShapeTemplate(option.template)
+    applyShapeTemplate(option.template, false)
   }
 }
 
