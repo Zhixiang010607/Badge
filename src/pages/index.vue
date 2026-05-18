@@ -1135,6 +1135,31 @@ const getHeartMaskSrc = (shape: ShapeType) => {
   return shape === 'redHeart' ? '/red-heart-mask.png' : '/yellow-heart-mask.png'
 }
 
+const cropStencilProps = computed(() => {
+  const size = getShapeSize(submitForm.value)
+  return {
+    aspectRatio: size.width / size.height
+  }
+})
+
+const cropperShapeClass = computed(() => {
+  return `cropper-shape-${submitForm.value.shape}`
+})
+
+const cropperShapeStyle = computed(() => {
+  if (submitForm.value.shape === 'polygon') {
+    return {
+      '--crop-shape-path': getRegularPolygonClipPath(submitForm.value.polygonSides)
+    }
+  }
+  if (submitForm.value.shape === 'redHeart' || submitForm.value.shape === 'yellowHeart') {
+    return {
+      '--crop-heart-mask': `url("${getHeartMaskSrc(submitForm.value.shape)}")`
+    }
+  }
+  return {}
+})
+
 const drawShapeFill = async (
   ctx: CanvasRenderingContext2D,
   form: RuleForm,
@@ -1484,11 +1509,6 @@ const operationButtonScaleStyle = computed(() => {
                   <el-button :icon="Delete" circle @click="removeImage(i, j)"/>
                 </el-tooltip>
               </template>
-              <template v-else>
-                <el-tooltip content="复制这张图片" placement="top">
-                  <el-button :icon="CopyDocument" circle @click="copyImage(i, j)"/>
-                </el-tooltip>
-              </template>
             </div>
           </div>
         </div>
@@ -1651,7 +1671,14 @@ const operationButtonScaleStyle = computed(() => {
       </div>
     </div>
     <el-dialog v-model="dialogVisible" title="裁剪" :close-on-click-modal="false">
-      <cropper ref="cropperRef" :src="tempImages[rowIndex][colIndex]"></cropper>
+      <div class="cropper-shell" :class="cropperShapeClass" :style="cropperShapeStyle">
+        <cropper
+          ref="cropperRef"
+          class="shape-cropper"
+          :src="tempImages[rowIndex][colIndex]"
+          :stencil-props="cropStencilProps"
+        ></cropper>
+      </div>
       <template #footer>
         <span class="dialog-footer">
           <el-button @click="dialogVisible = false">取消</el-button>
@@ -1755,6 +1782,41 @@ const operationButtonScaleStyle = computed(() => {
     width: 0;
     height: 0;
     opacity: 0;
+  }
+
+  .cropper-shell {
+    position: relative;
+  }
+
+  .shape-cropper {
+    height: 460px;
+    background: #202622;
+  }
+
+  .cropper-shell :deep(.vue-rectangle-stencil__preview) {
+    border: 2px solid rgba(255, 255, 255, 0.92);
+    box-shadow: 0 0 0 9999px rgba(14, 18, 16, 0.46), 0 0 0 2px rgba(31, 94, 82, 0.4);
+  }
+
+  .cropper-shape-circle :deep(.vue-rectangle-stencil__preview),
+  .cropper-shape-ellipse :deep(.vue-rectangle-stencil__preview) {
+    border-radius: 50%;
+  }
+
+  .cropper-shape-polygon :deep(.vue-rectangle-stencil__preview) {
+    clip-path: var(--crop-shape-path);
+  }
+
+  .cropper-shape-redHeart :deep(.vue-rectangle-stencil__preview),
+  .cropper-shape-yellowHeart :deep(.vue-rectangle-stencil__preview) {
+    mask-image: var(--crop-heart-mask);
+    mask-repeat: no-repeat;
+    mask-size: 100% 100%;
+    mask-position: center;
+    -webkit-mask-image: var(--crop-heart-mask);
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-size: 100% 100%;
+    -webkit-mask-position: center;
   }
 
   .preview-box {
