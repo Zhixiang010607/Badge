@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build && vue-tsc",
-    "preview": "vite preview"
+    "preview": "pnpm run build && wrangler dev",
+    "deploy": "pnpm run build && wrangler deploy"
   },
   "dependencies": {
     "@element-plus/icons-vue": "2.1.0",
@@ -19,6 +20,7 @@
     "vue-router": "^4.2.4"
   },
   "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.37.1",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@vitejs/plugin-vue": "^4.2.3",
     "eslint": "^8.0.1",
@@ -32,7 +34,8 @@
     "unplugin-auto-import": "^0.16.6",
     "unplugin-vue-components": "^0.25.2",
     "vite": "7.1.5",
-    "vue-tsc": "^1.8.27"
+    "vue-tsc": "^1.8.27",
+    "wrangler": "^4.92.0"
   },
   "packageManager": "pnpm@10.7.1"
 }
